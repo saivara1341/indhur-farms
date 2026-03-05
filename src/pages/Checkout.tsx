@@ -1,0 +1,381 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useCart } from "@/hooks/useCart";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
+import { useSettings } from "@/hooks/useSettings";
+import { useRazorpay } from "@/hooks/useRazorpay";
+import {
+  ShoppingBag, CreditCard, Truck, CheckCircle,
+  Smartphone, ArrowRight, Loader2, Copy, QrCode, Info
+} from "lucide-react";
+import { QRCodeCanvas } from "qrcode.react";
+
+
+
+const Checkout = () => {
+  const { t } = useTranslation();
+  const { items, cartTotal, clearCart } = useCart();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  const [step, setStep] = useState<"details" | "pay">("details");
+  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({ name: "", phone: "", address: "", notes: "", region: "" });
+  const [paymentMode, setPaymentMode] = useState<"app" | "qr" | "id">("app");
+  const [txnId, setTxnId] = useState("");
+
+  const deliveryCharge = form.region === "hyderabad" ? 100 : form.region === "ap-ts" ? 120 : 0;
+  const total = cartTotal + deliveryCharge;
+  const upiId = "6303602743@upi";
+  const merchantName = "Sarugu Sai Vara Prasad";
+  const upiLink = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(merchantName)}&am=${total}&cu=INR`;
+
+  const handleProceedToPayment = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name || !form.phone || !form.address) {
+      toast({ title: "Please fill all required fields", variant: "destructive" });
+      return;
+    }
+    setStep("pay");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleConfirmOrder = async () => {
+    if (!user || items.length === 0) return;
+    if (!txnId) {
+      toast({ title: "Transaction ID Required", description: "Please enter the UPI transaction ID after payment.", variant: "destructive" });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data: order, error: orderError } = await (supabase
+        .from("orders") as any)
+        .insert({
+          user_id: user.id,
+          total,
+          shipping_address: `${form.name}\n${form.address}`,
+          phone: form.phone,
+          notes: form.notes,
+          status: "pending",
+          payment_txn_id: txnId,
+          payment_status: "pending", // Manual verification needed
+        })
+        .select()
+        .single();
+
+      if (orderError) throw orderError;
+
+      const orderItems = items.map(item => ({
+        order_id: order.id,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        price: Number(item.product.price),
+      }));
+
+      const { error: itemsError } = await (supabase.from("order_items") as any).insert(orderItems);
+      if (itemsError) throw itemsError;
+
+      await clearCart();
+      toast({ title: "✅ Order placed!", description: "Order received. It will be confirmed after payment verification." });
+      navigate("/order-success");
+    } catch (err: any) {
+      console.error("Order creation error:", err);
+      toast({ title: t("checkout.order_failed"), variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const copyUpiId = () => {
+    navigator.clipboard.writeText(upiId);
+    toast({ title: "UPI ID Copied", description: "You can now paste it in your payment app." });
+  };
+
+  if (!user) { navigate("/auth"); return null; }
+  if (items.length === 0) { navigate("/cart"); return null; }
+
+  return (
+    <main className="container mx-auto px-4 py-10">
+      {/* Step Indicator */}
+      <div className="mb-8 flex items-center gap-3">
+        {[
+          { key: "details", label: "1. Delivery" },
+          { key: "pay", label: "2. Payment" },
+        ].map((s, i, arr) => (
+          <div key={s.key} className="flex items-center gap-3">
+            <span className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold transition-all ${step === s.key
+              ? "bg-primary text-primary-foreground"
+              : step === "pay" && i === 0
+                ? "bg-primary/20 text-primary"
+                : "bg-muted text-muted-foreground"
+              }`}>
+              {step === "pay" && i === 0
+                ? <CheckCircle className="h-4 w-4" />
+                : i + 1
+              }
+            </span>
+            <span className={`text-sm font-medium ${step === s.key ? "text-foreground" : "text-muted-foreground"}`}>
+              {s.label}
+            </span>
+            {i < arr.length - 1 && <ArrowRight className="h-4 w-4 text-muted-foreground" />}
+          </div>
+        ))}
+      </div>
+
+      <div className="grid gap-8 lg:grid-cols-3">
+
+        {/* ── STEP 1: Delivery Details ── */}
+        {step === "details" && (
+          <form onSubmit={handleProceedToPayment} className="space-y-5 lg:col-span-2">
+            <div className="rounded-xl border border-border bg-card p-6 shadow-card space-y-4">
+              <div className="flex items-center gap-2">
+                <Truck className="h-5 w-5 text-primary" />
+                <h3 className="font-display text-lg font-semibold">{t("checkout.delivery_details")}</h3>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <Label htmlFor="name">{t("checkout.full_name")} *</Label>
+                  <Input id="name" required value={form.name}
+                    onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                    placeholder="Your full name" />
+                </div>
+                <div>
+                  <Label htmlFor="phone">{t("checkout.phone")} *</Label>
+                  <Input id="phone" required type="tel" value={form.phone}
+                    onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                    placeholder="+91 XXXXX XXXXX" />
+                </div>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <Label htmlFor="address">{t("checkout.address")} *</Label>
+                  <Textarea id="address" required rows={3} value={form.address}
+                    onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
+                    placeholder="House No., Street, City, State, PIN" />
+                </div>
+                <div>
+                  <Label htmlFor="region">Delivery Region *</Label>
+                  <select
+                    id="region"
+                    required
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    value={form.region}
+                    onChange={e => setForm(f => ({ ...f, region: e.target.value }))}
+                  >
+                    <option value="">Select Region</option>
+                    <option value="hyderabad">Hyderabad (₹100)</option>
+                    <option value="ap-ts">Andhra Pradesh & Telangana (₹120)</option>
+                  </select>
+                  <p className="mt-2 text-xs text-muted-foreground">Shipping rates vary by region as per farm delivery policy.</p>
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="notes">{t("checkout.notes")}</Label>
+                <Textarea id="notes" rows={2} value={form.notes}
+                  onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+                  placeholder="Any special delivery instructions?" />
+              </div>
+            </div>
+            <Button variant="hero" size="lg" className="w-full" type="submit">
+              Proceed to Payment — ₹{total} <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
+          </form>
+        )}
+
+        {/* ── STEP 2: UPI Payment ── */}
+        {step === "pay" && (
+          <div className="lg:col-span-2">
+            <div className="rounded-xl border border-border bg-card p-6 shadow-card space-y-8 animate-in fade-in slide-in-from-bottom-4">
+              <div className="text-center space-y-2">
+                <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-2">
+                  <CreditCard className="h-6 w-6 text-primary" />
+                </div>
+                <h3 className="font-display text-2xl font-bold">Choose Payment Method</h3>
+                <p className="text-muted-foreground text-sm">Pay <strong>₹{total}</strong> to complete your order</p>
+              </div>
+
+              {/* Toggle Options */}
+              <div className="grid grid-cols-3 gap-2 p-1 bg-muted rounded-lg">
+                {[
+                  { id: "app", label: "App Link", icon: Smartphone },
+                  { id: "qr", label: "Scan QR", icon: QrCode },
+                  { id: "id", label: "UPI ID", icon: Copy },
+                ].map((mode) => (
+                  <button
+                    key={mode.id}
+                    onClick={() => setPaymentMode(mode.id as any)}
+                    className={`flex flex-col items-center gap-1.5 py-3 rounded-md transition-all ${paymentMode === mode.id
+                      ? "bg-background shadow-sm text-primary"
+                      : "text-muted-foreground hover:text-foreground"
+                      }`}
+                  >
+                    <mode.icon className="h-5 w-5" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider">{mode.label}</span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="min-h-[220px] flex flex-col items-center justify-center">
+                {paymentMode === "app" && (
+                  <div className="text-center space-y-6 w-full max-w-sm">
+                    <p className="text-sm text-muted-foreground">Tap to pay with your favorite UPI app</p>
+                    <div className="grid gap-3">
+                      <a href={upiLink} className="block">
+                        <Button variant="hero" size="lg" className="w-full py-6 text-base shadow-lg shadow-primary/10 hover:scale-[1.01] active:scale-[0.99] transition-transform flex items-center justify-center gap-3">
+                          <Smartphone className="h-5 w-5" /> Open UPI App
+                        </Button>
+                      </a>
+                      <div className="flex gap-3">
+                        <a href={`phonepe://pay?pa=${upiId}&pn=${encodeURIComponent(merchantName)}&am=${total}&cu=INR`} className="flex-1">
+                          <Button variant="outline" className="w-full py-6 border-2 border-purple-100 hover:border-purple-200 hover:bg-purple-50 text-purple-700 font-bold transition-all">
+                            PhonePe
+                          </Button>
+                        </a>
+                        <a href={`googlepay://pay?pa=${upiId}&pn=${encodeURIComponent(merchantName)}&am=${total}&cu=INR`} className="flex-1">
+                          <Button variant="outline" className="w-full py-6 border-2 border-blue-100 hover:border-blue-200 hover:bg-blue-50 text-blue-700 font-bold transition-all">
+                            GPay
+                          </Button>
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {paymentMode === "qr" && (
+                  <div className="text-center space-y-4">
+                    <div className="p-4 bg-white rounded-2xl shadow-inner border border-border inline-block">
+                      <QRCodeCanvas value={upiLink} size={180} level="H" includeMargin />
+                    </div>
+                    <div>
+                      <p className="font-bold text-sm">Scan with any UPI App</p>
+                      <p className="text-xs text-muted-foreground mt-1">GPay, PhonePe, Paytm, etc.</p>
+                    </div>
+                  </div>
+                )}
+
+                {paymentMode === "id" && (
+                  <div className="text-center space-y-5 w-full max-w-sm">
+                    <div className="p-4 bg-muted/50 rounded-xl border border-dashed border-border">
+                      <p className="text-xs text-muted-foreground mb-1 uppercase tracking-widest font-bold">UPI ID</p>
+                      <p className="text-lg font-mono font-bold tracking-tight">{upiId}</p>
+                    </div>
+                    <Button variant="outline" onClick={copyUpiId} className="rounded-full px-6">
+                      <Copy className="mr-2 h-4 w-4" /> Copy UPI ID
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Transaction Verification Form */}
+              <div className="pt-8 border-t border-border space-y-4">
+                <div className="text-center">
+                  <h4 className="font-bold text-sm flex items-center justify-center gap-2">
+                    Confirm Your Payment
+                    <div className="group relative">
+                      <Info className="h-4 w-4 text-muted-foreground cursor-help hover:text-primary transition-colors" />
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-popover text-popover-foreground text-xs rounded-lg shadow-xl border border-border opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 text-left leading-relaxed">
+                        <p className="font-bold mb-1">Where to find Transaction ID?</p>
+                        <ul className="list-disc list-inside space-y-1 text-[10px]">
+                          <li><strong>GPay:</strong> Open transaction details &gt; "UPI transaction ID"</li>
+                          <li><strong>PhonePe:</strong> History &gt; Select payment &gt; "UTR"</li>
+                          <li><strong>Paytm:</strong> Balance & History &gt; "UPI Ref No"</li>
+                        </ul>
+                        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-popover border-r border-b border-border rotate-45"></div>
+                      </div>
+                    </div>
+                  </h4>
+                  <p className="text-xs text-muted-foreground mt-1">Enter the 12-digit transaction ID after successful payment</p>
+                </div>
+                <div className="space-y-3 max-w-md mx-auto">
+                  <div className="relative">
+                    <Input
+                      placeholder="Enter 12-digit Transaction ID (Ref No.)"
+                      className="text-center text-lg font-mono h-14 tracking-widest"
+                      value={txnId}
+                      onChange={(e) => setTxnId(e.target.value)}
+                    />
+                  </div>
+                  <Button
+                    variant="hero"
+                    className="w-full h-14 text-lg shadow-lg"
+                    onClick={() => handleConfirmOrder()}
+                    disabled={loading || !txnId}
+                  >
+                    {loading ? (
+                      <Loader2 className="mr-2 h-6 w-6 animate-spin" />
+                    ) : (
+                      <><CheckCircle className="mr-2 h-5 w-5" /> I Have Paid — Place Order</>
+                    )}
+                  </Button>
+                  <p className="text-[10px] text-center text-muted-foreground bg-primary/5 p-2 rounded-lg border border-primary/20 animate-pulse">
+                    <Info className="h-3 w-3 inline-block mr-1" /> Payment will be verified by the admin before confirmation.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-center gap-6 text-[10px] text-muted-foreground uppercase tracking-widest font-bold">
+                <div className="flex items-center gap-1">
+                  <CheckCircle className="h-3 w-3 text-primary" /> 100% Safe
+                </div>
+                <div className="flex items-center gap-1">
+                  <CheckCircle className="h-3 w-3 text-primary" /> Direct Settlement
+                </div>
+              </div>
+
+              <button className="text-xs text-muted-foreground underline w-full" onClick={() => setStep("details")}>
+                ← Go back to change details
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Right: Order Summary (always visible) ── */}
+        <div className="rounded-xl border border-border bg-card p-6 shadow-card h-fit sticky top-4">
+          <div className="flex items-center gap-2 mb-4">
+            <ShoppingBag className="h-5 w-5 text-primary" />
+            <h3 className="font-display text-lg font-semibold">{t("checkout.order_summary")}</h3>
+          </div>
+          <div className="space-y-3">
+            {items.map(item => (
+              <div key={item.id} className="flex justify-between text-sm gap-2">
+                <span className="text-muted-foreground">
+                  {item.product.name} <span className="font-semibold text-foreground">× {item.quantity}</span>
+                </span>
+                <span className="font-semibold">₹{item.quantity * Number(item.product.price)}</span>
+              </div>
+            ))}
+            <div className="border-t border-border pt-3 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">{t("checkout.subtotal")}</span>
+                <span>₹{cartTotal}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">{t("checkout.delivery_fee")}</span>
+                <span className={deliveryCharge === 0 ? "text-primary font-semibold" : ""}>
+                  {deliveryCharge === 0 ? `${t("checkout.free")} 🎉` : `₹${deliveryCharge}`}
+                </span>
+              </div>
+            </div>
+            <div className="border-t border-border pt-3 flex justify-between text-xl font-bold">
+              <span>{t("checkout.total")}</span>
+              <span className="text-primary">₹{total}</span>
+            </div>
+            {deliveryCharge === 0 && (
+              <p className="text-xs text-primary font-medium">🚚 Free delivery applied!</p>
+            )}
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+};
+
+export default Checkout;

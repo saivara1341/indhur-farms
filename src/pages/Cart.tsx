@@ -1,0 +1,90 @@
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { useCart } from "@/hooks/useCart";
+import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "react-i18next";
+
+const Cart = () => {
+  const { items, cartTotal, loading, updateQuantity, removeFromCart } = useCart();
+  const { user } = useAuth();
+  const { t } = useTranslation();
+
+  if (!user) {
+    return (
+      <main className="container mx-auto flex min-h-[50vh] flex-col items-center justify-center px-4 py-20">
+        <ShoppingBag className="mb-4 h-16 w-16 text-muted-foreground" />
+        <h1 className="mb-2 font-display text-2xl font-bold">{t('cart.please_login')}</h1>
+        <p className="mb-6 text-muted-foreground">{t('cart.login_desc')}</p>
+        <Link to="/auth"><Button>{t('nav.login')}</Button></Link>
+      </main>
+    );
+  }
+
+  if (items.length === 0) {
+    return (
+      <main className="container mx-auto flex min-h-[60vh] flex-col items-center justify-center px-4 py-20">
+        <div className="mb-6 rounded-full bg-primary/10 p-6 text-primary">
+          <ShoppingBag className="h-12 w-12" />
+        </div>
+        <h1 className="mb-2 font-display text-2xl font-bold">{t('cart.empty')}</h1>
+        <p className="mb-8 max-w-sm text-center text-muted-foreground">{t('cart.empty_desc')}</p>
+        <Link to="/products"><Button variant="hero" size="lg">{t('cart.start_shopping')}</Button></Link>
+      </main>
+    );
+  }
+
+  return (
+    <main className="container mx-auto px-4 py-10">
+      <h1 className="mb-8 font-display text-3xl font-bold">{t('cart.title')}</h1>
+
+      <div className="grid gap-8 lg:grid-cols-3">
+        <div className="space-y-4 lg:col-span-2">
+          {items.map(item => (
+            <div key={item.id} className="flex gap-4 rounded-xl border border-border bg-card p-4 shadow-card">
+              <img src={item.product.image_url || "/placeholder.svg"} alt={item.product.name} className="h-24 w-24 rounded-lg object-cover" />
+              <div className="flex flex-1 flex-col justify-between">
+                <div>
+                  <h3 className="font-display font-semibold">{item.product.name}</h3>
+                  <p className="text-sm text-muted-foreground">₹{Number(item.product.price)} / {item.product.unit}</p>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 rounded-lg border border-border">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => updateQuantity(item.product_id, item.quantity - 1)}>
+                      <Minus className="h-3 w-3" />
+                    </Button>
+                    <span className="w-6 text-center text-sm font-semibold">{item.quantity}</span>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => updateQuantity(item.product_id, item.quantity + 1)}>
+                      <Plus className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="font-bold text-primary">₹{item.quantity * Number(item.product.price)}</span>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeFromCart(item.product_id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="rounded-xl border border-border bg-card p-6 shadow-card h-fit">
+          <h3 className="mb-4 font-display text-lg font-semibold">{t('checkout.order_summary')}</h3>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between"><span className="text-muted-foreground">{t('checkout.subtotal')}</span><span>₹{cartTotal}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">{t('checkout.delivery_fee')}</span><span>{cartTotal >= 500 ? t('checkout.free') : "₹40"}</span></div>
+            <div className="my-3 border-t border-border" />
+            <div className="flex justify-between text-lg font-bold"><span>{t('checkout.total')}</span><span className="text-primary">₹{cartTotal + (cartTotal >= 500 ? 0 : 40)}</span></div>
+          </div>
+          <Link to="/checkout">
+            <Button variant="hero" size="lg" className="mt-6 w-full">{t('cart.checkout')}</Button>
+          </Link>
+        </div>
+      </div>
+    </main>
+  );
+};
+
+export default Cart;
