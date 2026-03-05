@@ -5,7 +5,6 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import ProductCard from "@/components/ProductCard";
 import heroBanner from "@/assets/hero-banner.jpg";
-import FounderSlideshow from "@/components/FounderSlideshow";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 
@@ -181,8 +180,12 @@ const Index = () => {
       <section className="py-20 bg-background overflow-hidden relative">
         <div className="container mx-auto px-4">
           <div className="relative h-[400px] w-full max-w-5xl mx-auto rounded-3xl overflow-hidden shadow-2xl group border border-primary/10">
-            <FounderSlideshow className="h-full w-full" interval={5000} />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
+            <img
+              src="https://images.unsplash.com/photo-1627916607164-7b20241db935?auto=format&fit=crop&q=80&w=2000"
+              alt="Farm Journey"
+              className="absolute inset-0 h-full w-full object-cover group-hover:scale-105 transition-transform duration-700"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
             <div className="absolute bottom-0 left-0 p-8 md:p-12">
               <motion.span
                 initial={{ opacity: 0, y: 10 }}

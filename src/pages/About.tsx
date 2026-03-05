@@ -21,7 +21,7 @@ const About = () => {
               <div className="space-y-6">
                 <h2 className="font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl relative inline-block">
                   Sanjana Reddy
-                  <span className="block text-sm font-medium text-primary uppercase tracking-[0.2em] mt-1">Founder & CEO</span>
+                  <span className="block text-sm font-medium text-primary uppercase tracking-[0.2em] mt-1">Founder</span>
                   <span className="absolute -bottom-2 left-0 h-1.5 w-1/3 rounded-full bg-primary" />
                 </h2>
                 <div className="space-y-4 text-lg leading-relaxed text-muted-foreground">
