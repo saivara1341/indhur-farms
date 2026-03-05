@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import ProductCard from "@/components/ProductCard";
 import heroBanner from "@/assets/hero-banner.jpg";
+import farmJourney from "@/assets/farm-journey.png";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 
@@ -181,7 +182,7 @@ const Index = () => {
         <div className="container mx-auto px-4">
           <div className="relative h-[400px] w-full max-w-5xl mx-auto rounded-3xl overflow-hidden shadow-2xl group border border-primary/10">
             <img
-              src="https://images.unsplash.com/photo-1627916607164-7b20241db935?auto=format&fit=crop&q=80&w=2000"
+              src={farmJourney}
               alt="Farm Journey"
               className="absolute inset-0 h-full w-full object-cover group-hover:scale-105 transition-transform duration-700"
             />
