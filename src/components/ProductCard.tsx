@@ -3,7 +3,7 @@ import { ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/hooks/useCart";
 
-interface ProductCardProps {
+export interface ProductVariant {
   id: string;
   name: string;
   slug: string;
@@ -13,11 +13,16 @@ interface ProductCardProps {
   unit: string | null;
 }
 
+interface ProductCardProps {
+  baseName: string;
+  variants: ProductVariant[];
+}
+
 // ── Curated fallback images keyed by product keyword ─────────
 // ── Exact slug → image (highest priority, product-specific) ──
 const SLUG_IMAGES: Record<string, string> = {
-  "pasupu-kommulu": "/pasupu-kommulu.jpg",
-  "pasupu-turmeric-powder": "/turmeric-powder.png",
+  "pasupu-kommulu": "https://images.unsplash.com/photo-1615485242231-8933227928b9?w=800&auto=format&fit=crop&q=80",
+  "pasupu-turmeric-powder": "https://images.unsplash.com/photo-1598662957563-ee4965d4d72c?w=800&auto=format&fit=crop&q=80",
 };
 
 // ── Keyword fallback map ──────────────────────────────────────
@@ -63,17 +68,22 @@ function getSmartFallback(name: string, slug: string): string {
   return DEFAULT_FARM_IMAGE;
 }
 
+import { useState } from "react";
+
 // ── Component ─────────────────────────────────────────────────
-const ProductCard = ({
-  id,
-  name,
-  slug,
-  price,
-  compareAtPrice,
-  imageUrl,
-  unit,
-}: ProductCardProps) => {
+const ProductCard = ({ baseName, variants }: ProductCardProps) => {
   const { addToCart } = useCart();
+
+  // Sort variants by price so the lowest price variant is selected by default
+  const sortedVariants = [...variants].sort((a, b) => a.price - b.price);
+  const [selectedVariantId, setSelectedVariantId] = useState<string>(sortedVariants[0]?.id || "");
+
+  const selectedVariant = sortedVariants.find(v => v.id === selectedVariantId) || sortedVariants[0];
+
+  if (!selectedVariant) return null;
+
+  const { id, name, slug, price, compareAtPrice, imageUrl, unit } = selectedVariant;
+
   const discount = compareAtPrice
     ? Math.round(((compareAtPrice - price) / compareAtPrice) * 100)
     : 0;
@@ -82,7 +92,7 @@ const ProductCard = ({
   const displayImage = imageUrl || getSmartFallback(name, slug);
 
   return (
-    <div className="group relative overflow-hidden rounded-2xl border border-primary/5 bg-card shadow-premium transition-all duration-500 hover-lift active:scale-[0.98]">
+    <div className="group relative overflow-hidden rounded-2xl border border-primary/5 bg-card shadow-premium transition-all duration-500 hover-lift active:scale-[0.98] flex flex-col">
       {discount > 0 && (
         <span className="absolute left-2 top-2 z-10 express-badge shadow-lift">
           {discount}% OFF
@@ -110,36 +120,60 @@ const ProductCard = ({
         </div>
       </Link>
 
-      <div className="p-3">
+      <div className="p-3 flex flex-col flex-1">
         <div className="flex items-center gap-1 mb-1">
           <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
           <span className="text-[10px] font-bold text-primary uppercase tracking-tighter">Pure Farm Fresh</span>
         </div>
-        <Link to={`/product/${slug}`}>
-          <h3 className="font-display text-base font-bold text-foreground line-clamp-2 leading-tight min-h-[2.5rem] group-hover:text-primary transition-colors">
-            {name}
+
+        <Link to={`/product/${slug}`} className="mb-2 block">
+          <h3 className="font-display text-base font-bold text-foreground line-clamp-2 leading-tight group-hover:text-primary transition-colors">
+            {baseName}
           </h3>
         </Link>
-        <div className="mt-3 flex items-center justify-between">
-          <div className="flex flex-col">
-            <div className="flex items-center gap-1.5">
-              <span className="text-lg font-black text-foreground">₹{price}</span>
-              {compareAtPrice && (
-                <span className="text-xs text-muted-foreground line-through decoration-destructive/50">₹{compareAtPrice}</span>
-              )}
+
+        <div className="mt-auto">
+          {sortedVariants.length > 1 ? (
+            <div className="mb-3">
+              <select
+                className="w-full h-8 text-xs rounded-md border border-input bg-background px-2 py-1 outline-none ring-offset-background focus:ring-1 focus:ring-primary/50 text-foreground font-medium"
+                value={selectedVariantId}
+                onChange={(e) => setSelectedVariantId(e.target.value)}
+              >
+                {sortedVariants.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.unit} - ₹{v.price}
+                  </option>
+                ))}
+              </select>
             </div>
-            {unit && <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{unit}</span>}
+          ) : (
+            <div className="h-8 mb-3 flex items-center">
+              {unit && <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-2 py-1 rounded-md bg-secondary/10 border border-secondary/20">{unit}</span>}
+            </div>
+          )}
+
+          <div className="flex items-center justify-between mt-auto">
+            <div className="flex flex-col">
+              <div className="flex items-center gap-1.5">
+                <span className="text-lg font-black text-foreground">₹{price}</span>
+                {compareAtPrice && (
+                  <span className="text-xs text-muted-foreground line-through decoration-destructive/50">₹{compareAtPrice}</span>
+                )}
+              </div>
+            </div>
+
+            <Button
+              size="icon"
+              className="h-10 w-10 shrink-0 rounded-xl bg-primary shadow-lift hover:scale-110 active:scale-95 transition-all"
+              onClick={(e) => {
+                e.preventDefault();
+                addToCart(id);
+              }}
+            >
+              <ShoppingCart className="h-4 w-4 fill-current" />
+            </Button>
           </div>
-          <Button
-            size="icon"
-            className="h-10 w-10 rounded-xl bg-primary shadow-lift hover:scale-110 active:scale-95 transition-all"
-            onClick={(e) => {
-              e.preventDefault();
-              addToCart(id);
-            }}
-          >
-            <ShoppingCart className="h-4 w-4 fill-current" />
-          </Button>
         </div>
       </div>
     </div>

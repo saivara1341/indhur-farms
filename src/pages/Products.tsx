@@ -102,8 +102,8 @@ const Products = () => {
           variant={!categorySlug ? "default" : "outline"}
           size="sm"
           className={`rounded-full px-5 font-bold transition-all ${!categorySlug
-              ? "bg-primary text-white shadow-lift"
-              : "border-primary/20 text-primary hover:bg-primary/5"
+            ? "bg-primary text-white shadow-lift"
+            : "border-primary/20 text-primary hover:bg-primary/5"
             }`}
           onClick={() => setSearchParams({})}
         >
@@ -117,8 +117,8 @@ const Products = () => {
             variant={categorySlug === cat.slug ? "default" : "outline"}
             size="sm"
             className={`rounded-full px-6 font-bold transition-all ${categorySlug === cat.slug
-                ? "bg-primary text-white shadow-lift"
-                : "border-primary/20 text-primary hover:bg-primary/5"
+              ? "bg-primary text-white shadow-lift"
+              : "border-primary/20 text-primary hover:bg-primary/5"
               }`}
             onClick={() => setSearchParams({ category: cat.slug })}
           >
@@ -164,29 +164,37 @@ const Products = () => {
         </div>
       )}
 
-      {/* ── Product grid ── */}
-      {!isSelectedComingSoon && !isLoading && (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:gap-6">
-          {(products as any[]).map((product) => (
-            <ProductCard
-              key={product.id}
-              id={product.id}
-              name={product.name}
-              slug={product.slug}
-              price={Number(product.price)}
-              compareAtPrice={product.compare_at_price ? Number(product.compare_at_price) : undefined}
-              imageUrl={product.image_url || undefined}
-              unit={product.unit || undefined}
-            />
-          ))}
-        </div>
-      )}
-
       {/* ── Empty state ── */}
       {!isSelectedComingSoon && !isLoading && products.length === 0 && (
         <p className="py-20 text-center text-muted-foreground">
           {t("products.no_products")}
         </p>
+      )}
+
+      {/* ── Product grid ── */}
+      {!isSelectedComingSoon && !isLoading && products.length > 0 && (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:gap-6">
+          {Object.values((products as any[]).reduce((groups: Record<string, any>, product) => {
+            const baseName = product.name.replace(/\s*-\s*[0-9.]+(g|kg|ml|l)$/i, "").trim();
+            if (!groups[baseName]) groups[baseName] = { baseName, variants: [] };
+            groups[baseName].variants.push({
+              id: product.id,
+              name: product.name,
+              slug: product.slug,
+              price: Number(product.price),
+              compareAtPrice: product.compare_at_price ? Number(product.compare_at_price) : null,
+              imageUrl: product.image_url || null,
+              unit: product.unit || null,
+            });
+            return groups;
+          }, {})).map((group: any, idx) => (
+            <ProductCard
+              key={idx}
+              baseName={group.baseName}
+              variants={group.variants}
+            />
+          ))}
+        </div>
       )}
     </main>
   );

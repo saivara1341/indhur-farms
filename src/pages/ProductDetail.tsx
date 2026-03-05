@@ -1,4 +1,4 @@
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { useTranslation } from "react-i18next";
 
 const ProductDetail = () => {
   const { slug } = useParams();
+  const navigate = useNavigate();
   const { addToCart } = useCart();
   const [qty, setQty] = useState(1);
   const { t } = useTranslation();
@@ -18,8 +19,25 @@ const ProductDetail = () => {
   const { data: product, isLoading } = useQuery({
     queryKey: ["product", slug],
     queryFn: async () => {
-      const { data } = await supabase.from("products").select("*, categories(name)").eq("slug", slug).single();
-      return data;
+      const { data, error } = await supabase.from("products").select("*, categories(name)").eq("slug", slug).single();
+      if (error || !data) return null;
+
+      // Extract base name by stripping common weight suffixes
+      const baseName = data.name.replace(/\s*-\s*[0-9.]+(g|kg|ml|l)$/i, "").trim();
+
+      // Fetch all variants with the same base name (same category)
+      const { data: variants } = await supabase
+        .from("products")
+        .select("*")
+        .eq("category_id", data.category_id)
+        .like("name", `${baseName}%`)
+        .order("price", { ascending: true });
+
+      return {
+        ...data,
+        baseName,
+        variants: variants || [data],
+      };
     },
   });
 
@@ -31,7 +49,8 @@ const ProductDetail = () => {
   );
   if (!product) return <div className="container mx-auto px-4 py-20 text-center text-muted-foreground">{t('product_detail.not_found')}</div>;
 
-  const currentImg = activeImg || product.image_url || ((product.gallery as string[])?.[0]) || "/placeholder.svg";
+  const fallbackImg = product.slug.includes("powder") ? "https://images.unsplash.com/photo-1598662957563-ee4965d4d72c?w=800&auto=format&fit=crop&q=80" : "https://images.unsplash.com/photo-1615485242231-8933227928b9?w=800&auto=format&fit=crop&q=80";
+  const currentImg = activeImg || product.image_url || ((product.gallery as string[])?.[0]) || fallbackImg;
   const gallery = (product.gallery as string[]) || [];
   const discount = product.compare_at_price ? Math.round(((Number(product.compare_at_price) - Number(product.price)) / Number(product.compare_at_price)) * 100) : 0;
 
@@ -62,9 +81,26 @@ const ProductDetail = () => {
           {product.categories && (
             <span className="mb-2 text-sm font-medium text-secondary">{(product.categories as any).name}</span>
           )}
-          <h1 className="font-display text-3xl font-bold lg:text-4xl">{product.name}</h1>
+          <h1 className="font-display text-3xl font-bold lg:text-4xl">{product.baseName || product.name}</h1>
 
-          <div className="mt-4 flex items-baseline gap-3">
+          {product.variants && product.variants.length > 1 && (
+            <div className="mt-6 p-4 rounded-xl border border-primary/20 bg-primary/5">
+              <label className="text-sm font-bold text-foreground mb-2 block">Choose Weight Variant</label>
+              <select
+                className="w-full max-w-sm h-11 rounded-lg border border-input bg-background px-3 py-2 outline-none ring-offset-background focus:ring-2 focus:ring-primary/50 text-foreground font-semibold shadow-sm"
+                value={product.slug}
+                onChange={(e) => navigate(`/product/${e.target.value}`)}
+              >
+                {product.variants.map((v: any) => (
+                  <option key={v.id} value={v.slug}>
+                    {v.unit} - ₹{v.price} {v.compare_at_price ? `(Was ₹${v.compare_at_price})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div className="mt-6 flex items-baseline gap-3">
             <span className="text-3xl font-bold text-primary">₹{Number(product.price)}</span>
             {product.compare_at_price && (
               <>
