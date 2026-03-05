@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode, useCallback 
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "react-i18next";
 import { useToast } from "@/hooks/use-toast";
 
 interface CartItem {
@@ -35,16 +36,17 @@ const CartContext = createContext<CartContextType>({
   cartCount: 0,
   cartTotal: 0,
   loading: false,
-  addToCart: async () => {},
-  updateQuantity: async () => {},
-  removeFromCart: async () => {},
-  clearCart: async () => {},
-  refetch: async () => {},
+  addToCart: async () => { },
+  updateQuantity: async () => { },
+  removeFromCart: async () => { },
+  clearCart: async () => { },
+  refetch: async () => { },
 });
 
 export const CartProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [items, setItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -76,7 +78,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
     await supabase.from("cart_items").insert({ user_id: user.id, product_id: productId, quantity });
-    toast({ title: "Added to cart!" });
+    toast({ title: t('cart.item_added') });
     fetchCart();
   };
 
@@ -90,7 +92,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const removeFromCart = async (productId: string) => {
     if (!user) return;
     await supabase.from("cart_items").delete().eq("user_id", user.id).eq("product_id", productId);
-    toast({ title: "Removed from cart" });
+    toast({ title: t('cart.item_removed') });
     fetchCart();
   };
 
