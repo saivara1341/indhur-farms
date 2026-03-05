@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/hooks/useCart";
+import { cn } from "@/lib/utils";
 
 export interface ProductVariant {
   id: string;
@@ -135,44 +136,52 @@ const ProductCard = ({ baseName, variants }: ProductCardProps) => {
 
         <div className="mt-auto">
           {sortedVariants.length > 1 ? (
-            <div className="mb-3">
-              <select
-                className="w-full h-8 text-xs rounded-md border border-input bg-background px-2 py-1 outline-none ring-offset-background focus:ring-1 focus:ring-primary/50 text-foreground font-medium"
-                value={selectedVariantId}
-                onChange={(e) => setSelectedVariantId(e.target.value)}
-              >
+            <div className="mb-4">
+              <div className="flex flex-wrap gap-2">
                 {sortedVariants.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.unit} - ₹{v.price}
-                  </option>
+                  <button
+                    key={v.id}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setSelectedVariantId(v.id);
+                    }}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full text-[10px] font-bold tracking-tight transition-all border",
+                      selectedVariantId === v.id
+                        ? "bg-primary text-white border-primary shadow-sm scale-105"
+                        : "bg-secondary/10 text-muted-foreground border-secondary/20 hover:border-primary/30"
+                    )}
+                  >
+                    {v.unit}
+                  </button>
                 ))}
-              </select>
+              </div>
             </div>
           ) : (
-            <div className="h-8 mb-3 flex items-center">
-              {unit && <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-2 py-1 rounded-md bg-secondary/10 border border-secondary/20">{unit}</span>}
+            <div className="h-8 mb-4 flex items-center">
+              {unit && <span className="text-[10px] font-bold text-primary uppercase tracking-widest px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20">{unit}</span>}
             </div>
           )}
 
           <div className="flex items-center justify-between mt-auto">
             <div className="flex flex-col">
               <div className="flex items-center gap-1.5">
-                <span className="text-lg font-black text-foreground">₹{price}</span>
+                <span className="text-xl font-black text-foreground drop-shadow-sm">₹{price}</span>
                 {compareAtPrice && (
-                  <span className="text-xs text-muted-foreground line-through decoration-destructive/50">₹{compareAtPrice}</span>
+                  <span className="text-xs text-muted-foreground/60 line-through decoration-destructive/30">₹{compareAtPrice}</span>
                 )}
               </div>
             </div>
 
             <Button
               size="icon"
-              className="h-10 w-10 shrink-0 rounded-xl bg-primary shadow-lift hover:scale-110 active:scale-95 transition-all"
+              className="h-10 w-10 shrink-0 rounded-2xl bg-primary shadow-premium hover:scale-110 active:scale-95 transition-all group/btn"
               onClick={(e) => {
                 e.preventDefault();
                 addToCart(id);
               }}
             >
-              <ShoppingCart className="h-4 w-4 fill-current" />
+              <ShoppingCart className="h-4 w-4 fill-current group-hover/btn:rotate-12 transition-transform" />
             </Button>
           </div>
         </div>
