@@ -25,7 +25,7 @@
   "hero": {
     "tagline": "🌿 INDHUR FARMS :- Pure & Natural Turmeric Direct From Farmer to Your Home....",
     "title": "Fresh from Our Farm to Your Table",
-    "subtitle": "Discover the purity of organic farming with Indhur Farms. Premium turmeric, fresh vegetables, and sustainable produce.",
+    "subtitle": "Discover the purity of natural farming with Indhur Farms. Premium turmeric, fresh vegetables, and sustainable produce.",
     "delivery": "Farm-to-door shipping across India & globally",
     "shop_btn": "Shop Products",
     "story_btn": "Our Story"
@@ -117,7 +117,7 @@
   },
   "cta": {
     "title": "Direct from our farm to your door",
-    "subtitle": "Experience the health benefits of our organically grown, single-origin turmeric and fresh harvest.",
+    "subtitle": "Experience the health benefits of our naturally grown, single-origin turmeric and fresh harvest.",
     "follow": "Follow on Instagram",
     "whatsapp": "Order on WhatsApp",
     "order_now": "Order Now",
@@ -177,7 +177,7 @@
     "back_to_login": "Back to Login"
   },
   "footer": {
-    "tagline": "Pioneering organic turmeric farming with traditional methods and sustainable practices.",
+    "tagline": "Pioneering natural turmeric farming with traditional methods and sustainable practices.",
     "quick_links": "Quick Links",
     "shop_all": "Shop All",
     "about_us": "About Us",
@@ -331,7 +331,7 @@
       "add_new_product": "Add New Product",
       "product_details": "Product Details",
       "name": "Product Name",
-      "name_placeholder": "e.g. Organic Turmeric",
+      "name_placeholder": "e.g. Pure Turmeric",
       "slug": "Slug / URL",
       "price": "Price (₹)",
       "compare_price": "Compare at Price (₹)",

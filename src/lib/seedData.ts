@@ -8,7 +8,7 @@ export const seedSampleData = async () => {
       { name: "Fruits 🍎", slug: "fruits", description: "Fresh seasonal fruits directly from our orchards" },
       { name: "Vegetables 🥦", slug: "vegetables", description: "Farm-fresh vegetables grown without harmful pesticides" },
       { name: "Paddy & Grains 🌾", slug: "paddy-grains", description: "Premium rice, paddy and other grains" },
-      { name: "Sugarcane & Jaggery 🎋", slug: "sugarcane-jaggery", description: "Natural sugarcane products and organic jaggery" },
+      { name: "Sugarcane & Jaggery 🎋", slug: "sugarcane-jaggery", description: "Natural sugarcane products and pure jaggery" },
       { name: "Other Farm Products 🧺", slug: "other-farm-products", description: "All other seasonal and specialty farm produce" },
     ];
 
