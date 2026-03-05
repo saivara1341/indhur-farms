@@ -49,8 +49,9 @@ const ProductDetail = () => {
   );
   if (!product) return <div className="container mx-auto px-4 py-20 text-center text-muted-foreground">{t('product_detail.not_found')}</div>;
 
-  const fallbackImg = product.slug.includes("powder") ? "https://images.unsplash.com/photo-1598662957563-ee4965d4d72c?w=800&auto=format&fit=crop&q=80" : "https://images.unsplash.com/photo-1615485242231-8933227928b9?w=800&auto=format&fit=crop&q=80";
-  const currentImg = activeImg || product.image_url || ((product.gallery as string[])?.[0]) || fallbackImg;
+  const variantWithImage = product.variants?.find((v: any) => v.image_url);
+  const fallbackImg = product.slug.includes("powder") ? "https://images.unsplash.com/photo-1596647413661-d7790eb21cf5?w=800&auto=format&fit=crop&q=80" : "https://images.unsplash.com/photo-1615485242231-8933227928b9?w=800&auto=format&fit=crop&q=80";
+  const currentImg = activeImg || product.image_url || ((product.gallery as string[])?.[0]) || variantWithImage?.image_url || fallbackImg;
   const gallery = (product.gallery as string[]) || [];
   const discount = product.compare_at_price ? Math.round(((Number(product.compare_at_price) - Number(product.price)) / Number(product.compare_at_price)) * 100) : 0;
 
