@@ -6,18 +6,42 @@ const About = () => {
 
   return (
     <main>
+      {/* Founder Section */}
       <section className="relative overflow-hidden bg-primary/5 py-24">
-        <div className="container mx-auto px-4 text-center relative z-10 flex flex-col items-center">
-          <img src="/favicon.png" alt="Indhur Farms Logo" className="h-32 w-32 object-contain mb-6 drop-shadow-md rounded-full bg-white p-2 border border-primary/10" />
-          <h1 className="font-display text-5xl font-black text-foreground lg:text-6xl tracking-tight">Indhur Farms</h1>
-          <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground leading-relaxed">
-            {t("about.subtitle")}
-          </p>
-        </div>
-
-        {/* Decorative background elements */}
         <div className="absolute top-0 right-0 -mt-20 -mr-20 h-96 w-96 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 -mb-20 -ml-20 h-72 w-72 rounded-full bg-secondary/10 blur-3xl pointer-events-none" />
+
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="mx-auto max-w-6xl">
+            <div className="grid grid-cols-1 gap-12 lg:grid-cols-2 items-center">
+              <div className="relative h-[400px] sm:h-[500px] w-full overflow-hidden rounded-3xl shadow-xl border border-primary/10 -rotate-2 hover:rotate-0 transition-all duration-500">
+                <img
+                  src="/src/assets/founder-1.jpg"
+                  alt="Our Founder"
+                  className="absolute inset-0 h-full w-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1595859703088-34eb113dc881?auto=format&fit=crop&q=80&w=800";
+                  }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent pointer-events-none" />
+              </div>
+              <div className="space-y-6">
+                <h2 className="font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl relative inline-block">
+                  Our Founder's Story
+                  <span className="absolute -bottom-2 left-0 h-1.5 w-1/3 rounded-full bg-primary" />
+                </h2>
+                <div className="space-y-4 text-lg leading-relaxed text-muted-foreground">
+                  <p>
+                    Our farm is started with a simple goal — to connect farmers directly with consumers. I am a recent B.Tech graduate who believes in bringing farm products straight from the field to your home without mediators.
+                  </p>
+                  <p>
+                    Through our farm, we grow and share products like turmeric and other crops, and we also welcome visitors who want to learn about farming and experience the journey of food from soil to table.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
 
       <section className="container mx-auto px-4 py-16">

@@ -176,6 +176,51 @@ const Index = () => {
         </section>
       )}
 
+      {/* Farm Preview */}
+      <section className="py-20 bg-background overflow-hidden relative">
+        <div className="container mx-auto px-4">
+          <div className="relative h-[400px] w-full max-w-5xl mx-auto rounded-3xl overflow-hidden shadow-2xl group border border-primary/10">
+            <img
+              src="/src/assets/founder-2.jpg"
+              alt="Farm Journey"
+              className="absolute inset-0 h-full w-full object-cover group-hover:scale-105 transition-transform duration-700"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1605000797499-95a51c5269ae?auto=format&fit=crop&q=80&w=800";
+              }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+            <div className="absolute bottom-0 left-0 p-8 md:p-12">
+              <motion.span
+                initial={{ opacity: 0, y: 10 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/20 border border-white/30 px-3 py-1 text-xs font-bold uppercase tracking-wider text-white backdrop-blur-md"
+              >
+                <Leaf className="h-3 w-3" /> Farm to Table
+              </motion.span>
+              <motion.h3
+                initial={{ opacity: 0, y: 10 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.1 }}
+                className="text-3xl md:text-4xl font-display font-bold text-white mb-2"
+              >
+                Experience the journey of food
+              </motion.h3>
+              <motion.p
+                initial={{ opacity: 0, y: 10 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.2 }}
+                className="text-white/80 max-w-lg leading-relaxed text-sm md:text-base font-medium"
+              >
+                Straight from our fields to your home, without mediators.
+              </motion.p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
       <section className="relative py-24 overflow-hidden">
         <div className="absolute inset-0 bg-primary pointer-events-none" />

@@ -22,7 +22,7 @@ interface ProductCardProps {
 // ── Exact slug → image (highest priority, product-specific) ──
 const SLUG_IMAGES: Record<string, string> = {
   "pasupu-kommulu": "https://images.unsplash.com/photo-1615485242231-8933227928b9?w=800&auto=format&fit=crop&q=80",
-  "pasupu-turmeric-powder": "https://images.unsplash.com/photo-1598662957563-ee4965d4d72c?w=800&auto=format&fit=crop&q=80",
+  "pasupu-turmeric-powder": "https://images.unsplash.com/photo-1596647413661-d7790eb21cf5?w=800&auto=format&fit=crop&q=80",
 };
 
 // ── Keyword fallback map ──────────────────────────────────────
@@ -33,7 +33,7 @@ const FALLBACK_IMAGES: { keywords: string[]; url: string }[] = [
   },
   {
     keywords: ["powder", "churna"],
-    url: "https://images.unsplash.com/photo-1598662957563-ee4965d4d72c?w=800&auto=format&fit=crop&q=80",
+    url: "https://images.unsplash.com/photo-1596647413661-d7790eb21cf5?w=800&auto=format&fit=crop&q=80",
   },
   {
     keywords: ["fruit", "mango", "banana", "orange", "apple", "papaya"],
@@ -82,14 +82,15 @@ const ProductCard = ({ baseName, variants }: ProductCardProps) => {
 
   if (!selectedVariant) return null;
 
-  const { id, name, slug, price, compareAtPrice, imageUrl, unit } = selectedVariant;
+  const { id, name, slug, price, compareAtPrice, unit } = selectedVariant;
 
   const discount = compareAtPrice
     ? Math.round(((compareAtPrice - price) / compareAtPrice) * 100)
     : 0;
 
-  // Admin upload takes priority; smart fallback otherwise
-  const displayImage = imageUrl || getSmartFallback(name, slug);
+  // Admin upload takes priority. If selected variant doesn't have an image, find ANY variant that does!
+  const customImageUrl = selectedVariant.imageUrl || sortedVariants.find(v => v.imageUrl)?.imageUrl;
+  const displayImage = customImageUrl || getSmartFallback(name, slug);
 
   return (
     <div className="group relative overflow-hidden rounded-2xl border border-primary/5 bg-card shadow-premium transition-all duration-500 hover-lift active:scale-[0.98] flex flex-col">
