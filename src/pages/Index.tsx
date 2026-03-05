@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import ProductCard from "@/components/ProductCard";
 import heroBanner from "@/assets/hero-banner.jpg";
-import founder2 from "@/assets/founder-2.jpg";
+import FounderSlideshow from "@/components/FounderSlideshow";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 
@@ -23,7 +23,7 @@ const Index = () => {
     queryKey: ["featured-products"],
     queryFn: async () => {
       const { data } = await supabase.from("products").select("*").eq("is_featured", true).eq("is_active", true).limit(8);
-      return data || [];
+      return (data || []) as any[];
     },
   });
 
@@ -181,15 +181,8 @@ const Index = () => {
       <section className="py-20 bg-background overflow-hidden relative">
         <div className="container mx-auto px-4">
           <div className="relative h-[400px] w-full max-w-5xl mx-auto rounded-3xl overflow-hidden shadow-2xl group border border-primary/10">
-            <img
-              src={founder2}
-              alt="Farm Journey"
-              className="absolute inset-0 h-full w-full object-cover group-hover:scale-105 transition-transform duration-700"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1605000797499-95a51c5269ae?auto=format&fit=crop&q=80&w=800";
-              }}
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+            <FounderSlideshow className="h-full w-full" interval={5000} />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
             <div className="absolute bottom-0 left-0 p-8 md:p-12">
               <motion.span
                 initial={{ opacity: 0, y: 10 }}

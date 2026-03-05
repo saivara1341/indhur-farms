@@ -1,6 +1,6 @@
 import { Leaf, Heart, Sun, Phone } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import founder1 from "@/assets/founder-1.jpg";
+import FounderSlideshow from "@/components/FounderSlideshow";
 
 const About = () => {
   const { t } = useTranslation();
@@ -15,16 +15,8 @@ const About = () => {
         <div className="container mx-auto px-4 relative z-10">
           <div className="mx-auto max-w-6xl">
             <div className="grid grid-cols-1 gap-12 lg:grid-cols-2 items-center">
-              <div className="relative h-[400px] sm:h-[500px] w-full overflow-hidden rounded-3xl shadow-xl border border-primary/10 -rotate-2 hover:rotate-0 transition-all duration-500">
-                <img
-                  src={founder1}
-                  alt="Our Founder"
-                  className="absolute inset-0 h-full w-full object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1595859703088-34eb113dc881?auto=format&fit=crop&q=80&w=800";
-                  }}
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent pointer-events-none" />
+              <div className="relative h-[400px] sm:h-[500px] w-full overflow-hidden rounded-3xl shadow-2xl border border-primary/10 -rotate-1 hover:rotate-0 transition-all duration-700">
+                <FounderSlideshow className="h-full w-full" interval={5000} />
               </div>
               <div className="space-y-6">
                 <h2 className="font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl relative inline-block">

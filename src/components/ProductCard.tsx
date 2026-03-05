@@ -3,6 +3,8 @@ import { ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/hooks/useCart";
 import { cn } from "@/lib/utils";
+import pasupuKommuluImg from "@/assets/pasupu-kommulu.jpg";
+import pasupuPodiImg from "@/assets/pasupu-podi.jpg";
 
 export interface ProductVariant {
   id: string;
@@ -22,8 +24,22 @@ interface ProductCardProps {
 // ── Curated fallback images keyed by product keyword ─────────
 // ── Exact slug → image (highest priority, product-specific) ──
 const SLUG_IMAGES: Record<string, string> = {
-  "pasupu-kommulu": "https://images.unsplash.com/photo-1615485242231-8933227928b9?w=800&auto=format&fit=crop&q=80",
-  "pasupu-turmeric-powder": "https://images.unsplash.com/photo-1596647413661-d7790eb21cf5?w=800&auto=format&fit=crop&q=80",
+  "dry-turmeric-fingers-250g": pasupuKommuluImg,
+  "dry-turmeric-fingers-500g": pasupuKommuluImg,
+  "dry-turmeric-fingers-1kg": pasupuKommuluImg,
+  "dry-turmeric-fingers-2kg": pasupuKommuluImg,
+  "dry-turmeric-fingers-3kg": pasupuKommuluImg,
+  "dry-turmeric-fingers-4kg": pasupuKommuluImg,
+  "dry-turmeric-fingers-5kg": pasupuKommuluImg,
+  "pure-turmeric-powder-250g": pasupuPodiImg,
+  "pure-turmeric-powder-500g": pasupuPodiImg,
+  "pure-turmeric-powder-1kg": pasupuPodiImg,
+  "pure-turmeric-powder-2kg": pasupuPodiImg,
+  "pure-turmeric-powder-3kg": pasupuPodiImg,
+  "pure-turmeric-powder-4kg": pasupuPodiImg,
+  "pure-turmeric-powder-5kg": pasupuPodiImg,
+  "pasupu-kommulu": pasupuKommuluImg,
+  "pasupu-turmeric-powder": pasupuPodiImg,
 };
 
 // ── Keyword fallback map ──────────────────────────────────────
