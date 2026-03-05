@@ -1,5 +1,6 @@
 import { Leaf, Heart, Sun, Phone } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import founder1 from "@/assets/founder-1.jpg";
 
 const About = () => {
   const { t } = useTranslation();
@@ -16,7 +17,7 @@ const About = () => {
             <div className="grid grid-cols-1 gap-12 lg:grid-cols-2 items-center">
               <div className="relative h-[400px] sm:h-[500px] w-full overflow-hidden rounded-3xl shadow-xl border border-primary/10 -rotate-2 hover:rotate-0 transition-all duration-500">
                 <img
-                  src="/src/assets/founder-1.jpg"
+                  src={founder1}
                   alt="Our Founder"
                   className="absolute inset-0 h-full w-full object-cover"
                   onError={(e) => {
