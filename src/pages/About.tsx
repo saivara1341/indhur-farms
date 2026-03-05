@@ -6,13 +6,18 @@ const About = () => {
 
   return (
     <main>
-      <section className="bg-gradient-hero py-20 text-primary-foreground">
-        <div className="container mx-auto px-4 text-center">
-          <h1 className="font-display text-4xl font-bold lg:text-5xl">{t("about.title")}</h1>
-          <p className="mx-auto mt-4 max-w-2xl text-primary-foreground/80">
+      <section className="relative overflow-hidden bg-primary/5 py-24">
+        <div className="container mx-auto px-4 text-center relative z-10 flex flex-col items-center">
+          <img src="/favicon.png" alt="Indhur Farms Logo" className="h-32 w-32 object-contain mb-6 drop-shadow-md rounded-full bg-white p-2 border border-primary/10" />
+          <h1 className="font-display text-5xl font-black text-foreground lg:text-6xl tracking-tight">Indhur Farms</h1>
+          <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground leading-relaxed">
             {t("about.subtitle")}
           </p>
         </div>
+
+        {/* Decorative background elements */}
+        <div className="absolute top-0 right-0 -mt-20 -mr-20 h-96 w-96 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 -mb-20 -ml-20 h-72 w-72 rounded-full bg-secondary/10 blur-3xl pointer-events-none" />
       </section>
 
       <section className="container mx-auto px-4 py-16">
