@@ -6,6 +6,8 @@ import { ShoppingCart, Minus, Plus, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useCart } from "@/hooks/useCart";
 import { useTranslation } from "react-i18next";
+import { getSmartFallback } from "@/lib/imageUtils";
+import { cn } from "@/lib/utils";
 
 const ProductDetail = () => {
   const { slug } = useParams();
@@ -22,21 +24,21 @@ const ProductDetail = () => {
       const { data, error } = await supabase.from("products").select("*, categories(name)").eq("slug", slug).single();
       if (error || !data) return null;
 
-      // Extract base name by stripping common weight suffixes
-      const baseName = data.name.replace(/\s*-\s*[0-9.]+(g|kg|ml|l)$/i, "").trim();
+      const productData = data as any;
+      const baseName = productData.name.replace(/\s*(?:-\s*)?[0-9.]+\s*(g|kg|ml|l|grams|kgs)$/i, "").trim();
 
       // Fetch all variants with the same base name (same category)
       const { data: variants } = await supabase
         .from("products")
         .select("*")
-        .eq("category_id", data.category_id)
+        .eq("category_id", productData.category_id)
         .like("name", `${baseName}%`)
         .order("price", { ascending: true });
 
       return {
-        ...data,
+        ...productData,
         baseName,
-        variants: variants || [data],
+        variants: variants || [productData],
       };
     },
   });
@@ -50,8 +52,9 @@ const ProductDetail = () => {
   if (!product) return <div className="container mx-auto px-4 py-20 text-center text-muted-foreground">{t('product_detail.not_found')}</div>;
 
   const variantWithImage = product.variants?.find((v: any) => v.image_url);
-  const fallbackImg = product.slug.includes("powder") ? "https://images.unsplash.com/photo-1596647413661-d7790eb21cf5?w=800&auto=format&fit=crop&q=80" : "https://images.unsplash.com/photo-1615485242231-8933227928b9?w=800&auto=format&fit=crop&q=80";
+  const fallbackImg = getSmartFallback(product.name, product.slug);
   const currentImg = activeImg || product.image_url || ((product.gallery as string[])?.[0]) || variantWithImage?.image_url || fallbackImg;
+
   const gallery = (product.gallery as string[]) || [];
   const discount = product.compare_at_price ? Math.round(((Number(product.compare_at_price) - Number(product.price)) / Number(product.compare_at_price)) * 100) : 0;
 
@@ -85,31 +88,51 @@ const ProductDetail = () => {
           <h1 className="font-display text-3xl font-bold lg:text-4xl">{product.baseName || product.name}</h1>
 
           {product.variants && product.variants.length > 1 && (
-            <div className="mt-6 p-4 rounded-xl border border-primary/20 bg-primary/5">
-              <label className="text-sm font-bold text-foreground mb-2 block">Choose Weight Variant</label>
-              <select
-                className="w-full max-w-sm h-11 rounded-lg border border-input bg-background px-3 py-2 outline-none ring-offset-background focus:ring-2 focus:ring-primary/50 text-foreground font-semibold shadow-sm"
-                value={product.slug}
-                onChange={(e) => navigate(`/product/${e.target.value}`)}
-              >
-                {product.variants.map((v: any) => (
-                  <option key={v.id} value={v.slug}>
-                    {v.unit} - ₹{v.price} {v.compare_at_price ? `(Was ₹${v.compare_at_price})` : ''}
-                  </option>
-                ))}
-              </select>
+            <div className="mt-8 space-y-3">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('product_detail.choose_variant') || "Select Size / Quantity"}</label>
+              <div className="flex flex-wrap gap-2">
+                {product.variants.map((v: any) => {
+                  const isActive = product.slug === v.slug;
+                  return (
+                    <button
+                      key={v.id}
+                      onClick={() => navigate(`/product/${v.slug}`)}
+                      className={cn(
+                        "group relative flex flex-col items-center justify-center rounded-xl border-2 px-4 py-2.5 transition-all duration-300",
+                        isActive
+                          ? "border-primary bg-primary/5 shadow-md ring-2 ring-primary/10"
+                          : "border-border bg-card hover:border-primary/20 hover:bg-muted/50"
+                      )}
+                    >
+                      <span className={cn(
+                        "text-sm font-bold",
+                        isActive ? "text-primary" : "text-foreground"
+                      )}>{v.unit}</span>
+                      <span className={cn(
+                        "text-[10px] font-medium opacity-70",
+                        isActive ? "text-primary" : "text-muted-foreground"
+                      )}>₹{v.price}</span>
+                      {isActive && (
+                        <div className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[8px] text-white">
+                          ✓
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
 
           <div className="mt-6 flex items-baseline gap-3">
-            <span className="text-3xl font-bold text-primary">₹{Number(product.price)}</span>
+            <span className="text-3xl font-black text-primary drop-shadow-sm">₹{Number(product.price)}</span>
             {product.compare_at_price && (
               <>
-                <span className="text-lg text-muted-foreground line-through">₹{Number(product.compare_at_price)}</span>
-                <span className="rounded-full bg-secondary/20 px-2 py-0.5 text-xs font-bold text-secondary">{discount}% {t('products.off')}</span>
+                <span className="text-lg text-muted-foreground line-through opacity-60">₹{Number(product.compare_at_price)}</span>
+                <span className="rounded-full bg-secondary px-2.5 py-0.5 text-[10px] font-black uppercase text-secondary-foreground shadow-sm">{discount}% {t('products.off')}</span>
               </>
             )}
-            {product.unit && <span className="text-sm text-muted-foreground">{t('product_detail.per')} {product.unit}</span>}
+            {product.unit && <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">{t('product_detail.per')} {product.unit}</span>}
           </div>
 
           <p className="mt-6 leading-relaxed text-muted-foreground">{product.description}</p>

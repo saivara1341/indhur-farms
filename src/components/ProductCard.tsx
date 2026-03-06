@@ -3,8 +3,7 @@ import { ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/hooks/useCart";
 import { cn } from "@/lib/utils";
-import pasupuKommuluImg from "@/assets/pasupu-kommulu.jpg";
-import pasupuPodiImg from "@/assets/pasupu-podi.jpg";
+import { getSmartFallback, DEFAULT_FARM_IMAGE } from "@/lib/imageUtils";
 
 export interface ProductVariant {
   id: string;
@@ -21,69 +20,6 @@ interface ProductCardProps {
   variants: ProductVariant[];
 }
 
-// ── Curated fallback images keyed by product keyword ─────────
-// ── Exact slug → image (highest priority, product-specific) ──
-const SLUG_IMAGES: Record<string, string> = {
-  "dry-turmeric-fingers-250g": pasupuKommuluImg,
-  "dry-turmeric-fingers-500g": pasupuKommuluImg,
-  "dry-turmeric-fingers-1kg": pasupuKommuluImg,
-  "dry-turmeric-fingers-2kg": pasupuKommuluImg,
-  "dry-turmeric-fingers-3kg": pasupuKommuluImg,
-  "dry-turmeric-fingers-4kg": pasupuKommuluImg,
-  "dry-turmeric-fingers-5kg": pasupuKommuluImg,
-  "pure-turmeric-powder-250g": pasupuPodiImg,
-  "pure-turmeric-powder-500g": pasupuPodiImg,
-  "pure-turmeric-powder-1kg": pasupuPodiImg,
-  "pure-turmeric-powder-2kg": pasupuPodiImg,
-  "pure-turmeric-powder-3kg": pasupuPodiImg,
-  "pure-turmeric-powder-4kg": pasupuPodiImg,
-  "pure-turmeric-powder-5kg": pasupuPodiImg,
-  "pasupu-kommulu": pasupuKommuluImg,
-  "pasupu-turmeric-powder": pasupuPodiImg,
-};
-
-// ── Keyword fallback map ──────────────────────────────────────
-const FALLBACK_IMAGES: { keywords: string[]; url: string }[] = [
-  {
-    keywords: ["turmeric", "pasupu", "kommulu", "haldi"],
-    url: "https://images.unsplash.com/photo-1615485242231-8933227928b9?w=800&auto=format&fit=crop&q=80",
-  },
-  {
-    keywords: ["powder", "churna"],
-    url: "https://images.unsplash.com/photo-1596647413661-d7790eb21cf5?w=800&auto=format&fit=crop&q=80",
-  },
-  {
-    keywords: ["fruit", "mango", "banana", "orange", "apple", "papaya"],
-    url: "https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=800&auto=format&fit=crop&q=80",
-  },
-  {
-    keywords: ["vegetable", "veggie", "tomato", "onion", "chilli", "brinjal"],
-    url: "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=800&auto=format&fit=crop&q=80",
-  },
-  {
-    keywords: ["paddy", "rice", "grain", "wheat", "millet"],
-    url: "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=800&auto=format&fit=crop&q=80",
-  },
-  {
-    keywords: ["sugarcane", "jaggery", "bellam", "sugar", "cane"],
-    url: "https://images.unsplash.com/photo-1558642084-fd07fae5282e?w=800&auto=format&fit=crop&q=80",
-  },
-];
-
-// Generic farm fallback
-const DEFAULT_FARM_IMAGE =
-  "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800&auto=format&fit=crop&q=80";
-
-function getSmartFallback(name: string, slug: string): string {
-  // 1. Exact slug match
-  if (SLUG_IMAGES[slug]) return SLUG_IMAGES[slug];
-  // 2. Keyword match
-  const text = `${name} ${slug}`.toLowerCase();
-  for (const entry of FALLBACK_IMAGES) {
-    if (entry.keywords.some((kw) => text.includes(kw))) return entry.url;
-  }
-  return DEFAULT_FARM_IMAGE;
-}
 
 import { useState } from "react";
 
@@ -154,28 +90,38 @@ const ProductCard = ({ baseName, variants }: ProductCardProps) => {
           {sortedVariants.length > 1 ? (
             <div className="mb-4">
               <div className="flex flex-wrap gap-2">
-                {sortedVariants.map((v) => (
-                  <button
-                    key={v.id}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setSelectedVariantId(v.id);
-                    }}
-                    className={cn(
-                      "px-3 py-1.5 rounded-full text-[10px] font-bold tracking-tight transition-all border",
-                      selectedVariantId === v.id
-                        ? "bg-primary text-white border-primary shadow-sm scale-105"
-                        : "bg-secondary/10 text-muted-foreground border-secondary/20 hover:border-primary/30"
-                    )}
-                  >
-                    {v.unit}
-                  </button>
-                ))}
+                {sortedVariants.map((v) => {
+                  const isActive = selectedVariantId === v.id;
+                  return (
+                    <button
+                      key={v.id}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setSelectedVariantId(v.id);
+                      }}
+                      className={cn(
+                        "group relative flex flex-col items-center justify-center rounded-xl border px-3 py-1.5 transition-all duration-300",
+                        isActive
+                          ? "border-primary bg-primary/5 shadow-sm"
+                          : "border-secondary/20 bg-secondary/5 hover:border-primary/30"
+                      )}
+                    >
+                      <span className={cn(
+                        "text-[10px] font-bold leading-none",
+                        isActive ? "text-primary" : "text-muted-foreground"
+                      )}>{v.unit}</span>
+                      <span className={cn(
+                        "text-[8px] font-medium opacity-70 mt-0.5",
+                        isActive ? "text-primary" : "text-muted-foreground/60"
+                      )}>₹{v.price}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           ) : (
             <div className="h-8 mb-4 flex items-center">
-              {unit && <span className="text-[10px] font-bold text-primary uppercase tracking-widest px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20">{unit}</span>}
+              {unit && <span className="text-[10px] font-bold text-primary uppercase tracking-widest px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20">{unit} - ₹{price}</span>}
             </div>
           )}
 

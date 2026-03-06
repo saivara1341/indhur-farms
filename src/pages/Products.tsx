@@ -175,7 +175,7 @@ const Products = () => {
       {!isSelectedComingSoon && !isLoading && products.length > 0 && (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:gap-6">
           {Object.values((products as any[]).reduce((groups: Record<string, any>, product) => {
-            const baseName = product.name.replace(/\s*-\s*[0-9.]+(g|kg|ml|l)$/i, "").trim();
+            const baseName = product.name.replace(/\s*(?:-\s*)?[0-9.]+\s*(g|kg|ml|l|grams|kgs)$/i, "").trim();
             if (!groups[baseName]) groups[baseName] = { baseName, variants: [] };
             groups[baseName].variants.push({
               id: product.id,

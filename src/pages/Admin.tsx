@@ -22,6 +22,7 @@ import { seedSampleData } from "@/lib/seedData";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useSettings } from "@/hooks/useSettings";
+import { getSmartFallback } from "@/lib/imageUtils";
 
 // ─── Error Boundary for Admin Console ───
 class AdminErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null }> {
@@ -552,7 +553,7 @@ const ProductsTab = ({ defaultOpen }: { defaultOpen?: boolean }) => {
               {(filteredProducts as any[]).map((p) => (
                 <TableRow key={p.id} className="hover:bg-muted/30 transition-colors">
                   <TableCell>
-                    <img src={p.image_url || "/placeholder.svg"} alt={p.name} className="h-12 w-12 rounded-lg object-cover ring-1 ring-border shadow-sm" />
+                    <img src={p.image_url || getSmartFallback(p.name, p.slug)} alt={p.name} className="h-12 w-12 rounded-lg object-cover ring-1 ring-border shadow-sm" />
                   </TableCell>
                   <TableCell className="font-medium whitespace-nowrap">{p.name}</TableCell>
                   <TableCell className="whitespace-nowrap font-semibold">
@@ -762,7 +763,23 @@ const ProductForm = ({ product, categories, onClose, onSaved }: { product: any; 
               <div><Label>{t('admin.form.stock')}</Label><Input type="number" value={form.stock} onChange={e => setForm(f => ({ ...f, stock: e.target.value }))} /></div>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
-              <div><Label>{t('admin.form.unit')}</Label><Input value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} placeholder="kg, g, piece" /></div>
+              <div>
+                <Label>{t('admin.form.unit')}</Label>
+                <Input value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} placeholder="kg, g, piece" />
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                  {["250g", "500g", "1kg", "1 unit", "5kg"].map(u => (
+                    <button
+                      key={u}
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, unit: u }))}
+                      className={cn(
+                        "rounded bg-secondary/20 px-1.5 py-0.5 text-[10px] font-bold uppercase hover:bg-secondary/40 transition-colors",
+                        form.unit === u && "bg-primary text-white"
+                      )}
+                    >{u}</button>
+                  ))}
+                </div>
+              </div>
               <div>
                 <Label>{t('admin.form.category')}</Label>
                 <Select value={form.category_id} onValueChange={v => setForm(f => ({ ...f, category_id: v }))}>
@@ -870,7 +887,7 @@ const OrdersTab = () => {
   });
 
   const updateStatus = async (orderId: string, status: string) => {
-    const { error } = await supabase.from("orders" as any).update({ status } as any).eq("id", orderId);
+    const { error } = await (supabase.from("orders" as any).update({ status } as any) as any).eq("id", orderId);
     if (error) { toast({ title: t('admin.error'), description: error.message, variant: "destructive" }); return; }
     toast({ title: t('admin.order_moved', { status: t(`admin.pipeline.${status}`) }) });
     queryClient.invalidateQueries({ queryKey: ["admin-orders"] });
@@ -878,7 +895,7 @@ const OrdersTab = () => {
   };
 
   const updatePayment = async (orderId: string, paymentStatus: string) => {
-    const { error } = await supabase.from("orders" as any).update({ payment_status: paymentStatus } as any).eq("id", orderId);
+    const { error } = await (supabase.from("orders" as any).update({ payment_status: paymentStatus } as any) as any).eq("id", orderId);
     if (error) { toast({ title: t('admin.error'), description: error.message, variant: "destructive" }); return; }
     queryClient.invalidateQueries({ queryKey: ["admin-orders"] });
     toast({ title: paymentStatus === "verified" ? `💰 ${t('admin.payment_verified')}` : t('admin.payment_status_updated') });
@@ -987,7 +1004,7 @@ const OrdersTab = () => {
               <div className="flex flex-wrap gap-1.5">
                 {(order.order_items as any[])?.map((item: any) => (
                   <div key={item.id} className="flex items-center gap-1.5 rounded-lg bg-muted px-2.5 py-1.5 text-xs">
-                    <img src={item.products?.image_url || "/placeholder.svg"} alt="" className="h-7 w-7 rounded object-cover" />
+                    <img src={item.products?.image_url || getSmartFallback(item.products?.name, item.products?.slug)} alt="" className="h-7 w-7 rounded object-cover" />
                     <span className="font-medium">{item.products?.name} ×{item.quantity}</span>
                   </div>
                 ))}
@@ -1081,15 +1098,14 @@ const DeliveryTab = () => {
   const createReceipt = async (e: React.FormEvent) => {
     e.preventDefault();
     const finalCourierName = form.courier_name === "Other" ? customCourier : form.courier_name;
-    const { error } = await supabase.from("delivery_receipts" as any).insert({
+    const { error } = await (supabase.from("delivery_receipts" as any).insert({
       order_id: form.order_id,
       tracking_number: form.tracking_number || null,
       courier_name: finalCourierName || null,
       notes: form.notes || null,
-    } as any);
+    } as any) as any);
     if (error) { toast({ title: t('admin.error'), description: error.message, variant: "destructive" }); return; }
-    // Also update order status to shipped
-    await supabase.from("orders").update({ status: "shipped" }).eq("id", form.order_id);
+    await (supabase.from("orders" as any).update({ status: "shipped" } as any) as any).eq("id", form.order_id);
     toast({ title: t('admin.delivery.receipt_created') });
     setShowForm(false);
     setForm({ order_id: "", tracking_number: "", courier_name: "", notes: "" });
@@ -1099,15 +1115,15 @@ const DeliveryTab = () => {
   };
 
   const updateDeliveryStatus = async (id: string, status: string, orderId: string) => {
-    const { error } = await supabase.from("delivery_receipts" as any).update({
+    const { error } = await (supabase.from("delivery_receipts" as any).update({
       status,
       ...(status === "delivered" ? { delivered_at: new Date().toISOString() } : {}),
-    } as any).eq("id", id);
+    } as any) as any).eq("id", id);
 
     if (error) { toast({ title: t('admin.error'), description: error.message, variant: "destructive" }); return; }
 
     if (status === "delivered") {
-      await supabase.from("orders" as any).update({ status: "delivered" }).eq("id", orderId);
+      await (supabase.from("orders" as any).update({ status: "delivered" } as any) as any).eq("id", orderId);
     }
     toast({ title: t('admin.delivery.status_updated', { status: t(`admin.delivery.${status}`) }) });
     queryClient.invalidateQueries({ queryKey: ["admin-delivery-receipts"] });

@@ -138,7 +138,7 @@ const Index = () => {
 
             <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
               {Object.values(featuredProducts.reduce((groups: Record<string, any>, product) => {
-                const baseName = product.name.replace(/\s*-\s*[0-9.]+(g|kg|ml|l)$/i, "").trim();
+                const baseName = product.name.replace(/\s*(?:-\s*)?[0-9.]+\s*(g|kg|ml|l|grams|kgs)$/i, "").trim();
                 if (!groups[baseName]) groups[baseName] = { baseName, variants: [] };
                 groups[baseName].variants.push({
                   id: product.id,

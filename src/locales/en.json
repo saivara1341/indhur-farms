@@ -113,7 +113,8 @@
     "in_stock": "In Stock",
     "available": "units available",
     "free_delivery": "🚚 Free delivery on orders above ₹500",
-    "organic": "🌿 Farmer to Consumer & Pesticide-Free"
+    "organic": "🌿 Farmer to Consumer & Pesticide-Free",
+    "choose_variant": "Select Size / Quantity"
   },
   "cta": {
     "title": "Direct from our farm to your door",
@@ -339,6 +340,7 @@
       "desc_placeholder": "Describe your harvest...",
       "stock": "Stock Quantity",
       "unit": "Unit",
+      "quick_units": "Quick Units",
       "category": "Category",
       "select_category": "Select Category",
       "images": "Images",

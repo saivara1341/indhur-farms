@@ -4,6 +4,7 @@ import { useCart } from "@/hooks/useCart";
 import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "react-i18next";
+import { getSmartFallback } from "@/lib/imageUtils";
 
 const Cart = () => {
   const { items, cartTotal, loading, updateQuantity, removeFromCart } = useCart();
@@ -42,7 +43,7 @@ const Cart = () => {
         <div className="space-y-4 lg:col-span-2">
           {items.map(item => (
             <div key={item.id} className="flex gap-4 rounded-xl border border-border bg-card p-4 shadow-card">
-              <img src={item.product.image_url || "/placeholder.svg"} alt={item.product.name} className="h-24 w-24 rounded-lg object-cover" />
+              <img src={item.product.image_url || getSmartFallback(item.product.name, "")} alt={item.product.name} className="h-24 w-24 rounded-lg object-cover" />
               <div className="flex flex-1 flex-col justify-between">
                 <div>
                   <h3 className="font-display font-semibold">{item.product.name}</h3>
