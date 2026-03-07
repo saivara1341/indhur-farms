@@ -2,7 +2,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Minus, Plus, Loader2 } from "lucide-react";
+import { ShoppingCart, Minus, Plus, Loader2, ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { useCart } from "@/hooks/useCart";
 import { useTranslation } from "react-i18next";
@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getTranslatedBaseName, getTranslatedProductName } from "@/lib/translations";
+import { getTranslatedBaseName } from "@/lib/translations";
 
 const ProductDetail = () => {
   const { slug } = useParams();
@@ -64,10 +64,17 @@ const ProductDetail = () => {
   const currentImg = activeImg || product.image_url || ((product.gallery as string[])?.[0]) || variantWithImage?.image_url || fallbackImg;
 
   const gallery = (product.gallery as string[]) || [];
-  const discount = product.compare_at_price ? Math.round(((Number(product.compare_at_price) - Number(product.price)) / Number(product.compare_at_price)) * 100) : 0;
 
   return (
     <main className="container mx-auto px-4 py-10">
+      {/* Back button */}
+      <button
+        onClick={() => navigate(-1)}
+        className="inline-flex items-center gap-2 mb-6 rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-primary shadow-sm transition-all hover:bg-primary/5 hover:shadow-md"
+      >
+        <ArrowLeft className="h-4 w-4" /> Back
+      </button>
+
       <div className="grid gap-10 md:grid-cols-2">
         <div className="space-y-4">
           <div className="aspect-square overflow-hidden rounded-2xl bg-muted shadow-lg border border-border">
@@ -127,14 +134,9 @@ const ProductDetail = () => {
             </div>
           )}
 
+          {/* Price — no discount display */}
           <div className="mt-6 flex items-baseline gap-3">
             <span className="text-3xl font-black text-primary drop-shadow-sm">₹{Number(product.price)}</span>
-            {product.compare_at_price && (
-              <>
-                <span className="text-lg text-muted-foreground line-through opacity-60">₹{Number(product.compare_at_price)}</span>
-                <span className="rounded-full bg-secondary px-2.5 py-0.5 text-[10px] font-black uppercase text-secondary-foreground shadow-sm">{discount}% {t('products.off')}</span>
-              </>
-            )}
             {product.unit && <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">{t('product_detail.per')} {product.unit}</span>}
           </div>
 
@@ -151,10 +153,9 @@ const ProductDetail = () => {
             </Button>
           </div>
 
+          {/* Stock info only — removed organic/pesticide text */}
           <div className="mt-6 rounded-lg bg-muted p-4 text-sm text-muted-foreground">
             <p>✅ {product.stock > 0 ? `${t('product_detail.in_stock')} (${product.stock} ${t('product_detail.available')})` : t('products.out_of_stock')}</p>
-            <p>{t('product_detail.free_delivery')}</p>
-            <p>{t('product_detail.organic')}</p>
           </div>
         </div>
       </div>

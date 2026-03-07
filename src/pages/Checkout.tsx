@@ -9,15 +9,54 @@ import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
-import { useSettings } from "@/hooks/useSettings";
-import { useRazorpay } from "@/hooks/useRazorpay";
 import {
   ShoppingBag, CreditCard, Truck, CheckCircle,
-  Smartphone, ArrowRight, Loader2, Copy, QrCode, Info, X, UploadCloud
+  Smartphone, ArrowRight, Loader2, Copy, QrCode, Info, X, UploadCloud, ArrowLeft
 } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
 
+// ── Delivery charge table ─────────────────────────────────────
+// Weight thresholds in grams
+const DELIVERY_TIERS: { maxGrams: number; hyd: number; apTs: number }[] = [
+  { maxGrams: 500, hyd: 80, apTs: 120 },
+  { maxGrams: 1000, hyd: 100, apTs: 120 },
+  { maxGrams: 2000, hyd: 160, apTs: 200 },
+  { maxGrams: 3000, hyd: 200, apTs: 220 },
+  { maxGrams: 4000, hyd: 230, apTs: 250 },
+  { maxGrams: 5000, hyd: 250, apTs: 270 },
+];
 
+const DELIVERY_TABLE = [
+  { label: "250g / 500g", hyd: 80, apTs: 120 },
+  { label: "1 kg", hyd: 100, apTs: 120 },
+  { label: "2 kg", hyd: 160, apTs: 200 },
+  { label: "3 kg", hyd: 200, apTs: 220 },
+  { label: "4 kg", hyd: 230, apTs: 250 },
+  { label: "5 kg", hyd: 250, apTs: 270 },
+];
+
+// Parse a unit string like "250g", "1kg", "2 kg", "500 grams" → grams
+const parseUnitToGrams = (unit: string | null): number => {
+  if (!unit) return 1000; // default 1kg if unknown
+  const lower = unit.toLowerCase().replace(/\s+/g, "");
+  const kgMatch = lower.match(/^([0-9.]+)kg/);
+  const gMatch = lower.match(/^([0-9.]+)g/);
+  if (kgMatch) return parseFloat(kgMatch[1]) * 1000;
+  if (gMatch) return parseFloat(gMatch[1]);
+  return 1000;
+};
+
+const getDeliveryCharge = (totalGrams: number, region: string): number => {
+  if (!region) return 0;
+  for (const tier of DELIVERY_TIERS) {
+    if (totalGrams <= tier.maxGrams) {
+      return region === "hyderabad" ? tier.hyd : tier.apTs;
+    }
+  }
+  // If more than 5kg, use the last tier's charge
+  const last = DELIVERY_TIERS[DELIVERY_TIERS.length - 1];
+  return region === "hyderabad" ? last.hyd : last.apTs;
+};
 
 const Checkout = () => {
   const { t } = useTranslation();
@@ -27,59 +66,51 @@ const Checkout = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState<"details" | "pay">("details");
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({ name: "", phone: "", address: "", notes: "", region: "" });
+  const [phonePrefix, setPhonePrefix] = useState("+91");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [form, setForm] = useState({ name: "", address: "", notes: "", region: "" });
   const [paymentMode, setPaymentMode] = useState<"app" | "qr" | "id">("app");
   const [txnId, setTxnId] = useState("");
   const [screenshotUrl, setScreenshotUrl] = useState("");
   const [uploadingScreenshot, setUploadingScreenshot] = useState(false);
 
-  const deliveryCharge = form.region === "hyderabad" ? 100 : form.region === "ap-ts" ? 120 : 0;
+  // Calculate total weight from cart items
+  const totalGrams = items.reduce((acc, item) => {
+    return acc + parseUnitToGrams(item.product.unit) * item.quantity;
+  }, 0);
+
+  const deliveryCharge = getDeliveryCharge(totalGrams, form.region);
   const total = cartTotal + deliveryCharge;
+
   const upiId = "6303602743@upi";
   const merchantName = "Sarugu Sai Vara Prasad";
   const upiLink = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(merchantName)}&am=${total}&cu=INR`;
 
   const handleProceedToPayment = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name || !form.phone || !form.address) {
+    if (!form.name || !phoneNumber || !form.address) {
       toast({ title: "Please fill all required fields", variant: "destructive" });
       return;
     }
 
-    // Strict Mobile Validation: 10 digits, starts with 6, 7, 8, or 9
-    const phoneRegex = /^[6-9]\d{9}$/;
-    if (!phoneRegex.test(form.phone)) {
-      toast({
-        title: "Invalid Mobile Number",
-        description: "Please enter a valid 10-digit Indian mobile number (e.g., 9876543210).",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Address Verification Logic
-    const addressLower = form.address.toLowerCase();
-    const region = form.region.toLowerCase();
-
-    if (region === "hyderabad") {
-      const hydKeywords = ["hyderabad", "hyd", "secunderabad", "cyberabad", "kondapur", "madhapur", "gachibowli", "miyapur", "kukatpally", "jubilee", "banjara"];
-      const isHyd = hydKeywords.some(k => addressLower.includes(k));
-      if (!isHyd) {
+    // Phone validation: Indian numbers must be 10 digits starting 6–9
+    const isIndian = phonePrefix === "+91";
+    if (isIndian) {
+      const stripped = phoneNumber.replace(/\s+/g, "");
+      const phoneRegex = /^[6-9]\d{9}$/;
+      if (!phoneRegex.test(stripped)) {
         toast({
+          title: "Invalid Mobile Number",
+          description: "Please enter a valid 10-digit Indian mobile number starting with 6, 7, 8 or 9.",
           variant: "destructive"
         });
-        return; // Added return to prevent proceeding with mismatch
+        return;
       }
-    } else if (region === "ap-ts") {
-      const stateKeywords = ["andhra", "telangana", "ap", "ts", "vijayawada", "vizag", "visakhapatnam", "guntur", "warangal", "tirupati"];
-      const isState = stateKeywords.some(k => addressLower.includes(k));
-      if (!isState) {
-        toast({
-          title: "Verify State",
-          description: "Please ensure your address is within Andhra Pradesh or Telangana for this shipping rate.",
-          variant: "destructive"
-        });
-        return; // Added return 
+    } else {
+      // For international: just ensure at least 6 digits
+      if (phoneNumber.replace(/\D/g, "").length < 6) {
+        toast({ title: "Invalid Phone Number", description: "Please enter a valid phone number.", variant: "destructive" });
+        return;
       }
     }
 
@@ -95,6 +126,7 @@ const Checkout = () => {
     }
 
     setLoading(true);
+    const fullPhone = `${phonePrefix} ${phoneNumber}`;
     try {
       const { data: order, error: orderError } = await (supabase
         .from("orders") as any)
@@ -102,12 +134,12 @@ const Checkout = () => {
           user_id: user.id,
           total,
           shipping_address: `${form.name}\n${form.address}`,
-          phone: form.phone,
+          phone: fullPhone,
           notes: form.notes,
           status: "pending",
           payment_txn_id: txnId,
           payment_screenshot_url: screenshotUrl || null,
-          payment_status: "pending", // Manual verification needed
+          payment_status: "pending",
         })
         .select()
         .single();
@@ -143,8 +175,6 @@ const Checkout = () => {
   const handleScreenshotUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    // Limit size to 5MB
     if (file.size > 5 * 1024 * 1024) {
       toast({ title: "File too large", description: "Screenshot must be less than 5MB", variant: "destructive" });
       return;
@@ -157,9 +187,8 @@ const Checkout = () => {
 
     try {
       const { error: uploadError } = await supabase.storage
-        .from('product-images') // Reusing existing bucket
+        .from('product-images')
         .upload(filePath, file);
-
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage
@@ -169,7 +198,6 @@ const Checkout = () => {
       setScreenshotUrl(publicUrl);
       toast({ title: "✅ Screenshot Uploaded", description: "Payment receipt attached to order." });
     } catch (err: any) {
-      console.error("Upload error:", err);
       toast({ title: "Upload Failed", description: err.message, variant: "destructive" });
     } finally {
       setUploadingScreenshot(false);
@@ -182,7 +210,7 @@ const Checkout = () => {
   return (
     <main className="container mx-auto px-4 py-10">
       {/* Step Indicator */}
-      <div className="mb-8 flex items-center gap-3">
+      <div className="mb-6 flex items-center gap-3">
         {[
           { key: "details", label: "1. Delivery" },
           { key: "pay", label: "2. Payment" },
@@ -206,23 +234,16 @@ const Checkout = () => {
           </div>
         ))}
       </div>
+
+      {/* Back navigation bar */}
       <div className="mb-6 flex items-center justify-between">
-        <Button
-          variant="ghost"
-          onClick={() => navigate("/cart")}
-          className="text-sm font-medium text-primary hover:underline flex items-center gap-1 transition-all hover:gap-2 px-0"
+        <button
+          onClick={() => step === "pay" ? setStep("details") : navigate("/cart")}
+          className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-primary shadow-sm transition-all hover:bg-primary/5"
         >
-          <ShoppingBag className="h-4 w-4" /> {t('nav.cart') || "Cart"}
-        </Button>
-        {step === "pay" && (
-          <Button
-            variant="ghost"
-            onClick={() => setStep("details")}
-            className="text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
-          >
-            ← Change Delivery Details
-          </Button>
-        )}
+          <ArrowLeft className="h-4 w-4" />
+          {step === "pay" ? "← Change Delivery Details" : "← Back to Cart"}
+        </button>
       </div>
 
       <div className="grid gap-8 lg:grid-cols-3">
@@ -235,6 +256,7 @@ const Checkout = () => {
                 <Truck className="h-5 w-5 text-primary" />
                 <h3 className="font-display text-lg font-semibold">{t("checkout.delivery_details")}</h3>
               </div>
+
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <Label htmlFor="name">{t("checkout.full_name")} *</Label>
@@ -242,13 +264,43 @@ const Checkout = () => {
                     onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                     placeholder="Your full name" />
                 </div>
+
+                {/* Phone with country prefix */}
                 <div>
                   <Label htmlFor="phone">{t("checkout.phone")} *</Label>
-                  <Input id="phone" required type="tel" value={form.phone}
-                    onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
-                    placeholder="+91 XXXXX XXXXX" />
+                  <div className="flex gap-2">
+                    {/* Editable prefix */}
+                    <Input
+                      value={phonePrefix}
+                      onChange={e => setPhonePrefix(e.target.value)}
+                      className="w-20 font-mono text-sm text-center shrink-0"
+                      title="Country code (e.g. +91 for India)"
+                      maxLength={6}
+                    />
+                    <Input
+                      id="phone"
+                      required
+                      type="tel"
+                      value={phoneNumber}
+                      onChange={e => {
+                        // If user pastes full number with 91, strip it
+                        let v = e.target.value.replace(/\D/g, "");
+                        if (phonePrefix === "+91" && v.startsWith("91") && v.length > 10) {
+                          v = v.slice(2);
+                        }
+                        setPhoneNumber(v);
+                      }}
+                      placeholder={phonePrefix === "+91" ? "10-digit mobile number" : "Phone number"}
+                      maxLength={phonePrefix === "+91" ? 10 : 15}
+                      className="flex-1"
+                    />
+                  </div>
+                  {phonePrefix === "+91" && (
+                    <p className="mt-1 text-xs text-muted-foreground">Enter 10-digit number (starts with 6–9)</p>
+                  )}
                 </div>
               </div>
+
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <Label htmlFor="address">{t("checkout.address")} *</Label>
@@ -261,17 +313,38 @@ const Checkout = () => {
                   <select
                     id="region"
                     required
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     value={form.region}
                     onChange={e => setForm(f => ({ ...f, region: e.target.value }))}
                   >
                     <option value="">Select Region</option>
-                    <option value="hyderabad">Hyderabad (₹100)</option>
-                    <option value="ap-ts">Andhra Pradesh & Telangana (₹120)</option>
+                    <option value="hyderabad">Hyderabad</option>
+                    <option value="ap-ts">Andhra Pradesh &amp; Telangana</option>
                   </select>
-                  <p className="mt-2 text-xs text-muted-foreground">Shipping rates vary by region as per farm delivery policy.</p>
+
+                  {/* Delivery charge info table */}
+                  {form.region && (
+                    <div className="mt-3 rounded-lg border border-primary/20 bg-primary/5 p-3">
+                      <p className="text-xs font-bold text-primary mb-2">Delivery Charges — {form.region === "hyderabad" ? "Hyderabad" : "AP / TS"}</p>
+                      <div className="space-y-1">
+                        {DELIVERY_TABLE.map(row => (
+                          <div key={row.label} className="flex justify-between text-xs">
+                            <span className="text-muted-foreground">{row.label}</span>
+                            <span className="font-semibold">₹{form.region === "hyderabad" ? row.hyd : row.apTs}</span>
+                          </div>
+                        ))}
+                      </div>
+                      {deliveryCharge > 0 && (
+                        <div className="mt-2 pt-2 border-t border-primary/20 flex justify-between text-xs font-bold text-primary">
+                          <span>Your delivery charge</span>
+                          <span>₹{deliveryCharge}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
+
               <div>
                 <Label htmlFor="notes">{t("checkout.notes")}</Label>
                 <Textarea id="notes" rows={2} value={form.notes}
@@ -381,23 +454,20 @@ const Checkout = () => {
                         <ul className="list-disc list-inside space-y-1 text-[10px]">
                           <li><strong>GPay:</strong> Open transaction details &gt; "UPI transaction ID"</li>
                           <li><strong>PhonePe:</strong> History &gt; Select payment &gt; "UTR"</li>
-                          <li><strong>Paytm:</strong> Balance & History &gt; "UPI Ref No"</li>
+                          <li><strong>Paytm:</strong> Balance &amp; History &gt; "UPI Ref No"</li>
                         </ul>
-                        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-popover border-r border-b border-border rotate-45"></div>
                       </div>
                     </div>
                   </h4>
-                  <p className="text-xs text-muted-foreground mt-1">Enter the 12-digit transaction ID after successful payment</p>
+                  <p className="text-xs text-muted-foreground mt-1">Enter the transaction ID after successful payment</p>
                 </div>
                 <div className="space-y-3 max-w-md mx-auto">
-                  <div className="relative">
-                    <Input
-                      placeholder="Enter 12-digit Transaction ID (Ref No.)"
-                      className="text-center text-lg font-mono h-14 tracking-widest"
-                      value={txnId}
-                      onChange={(e) => setTxnId(e.target.value.replace(/[^a-zA-Z0-9]/g, ""))}
-                    />
-                  </div>
+                  <Input
+                    placeholder="Enter Transaction ID (Ref No.)"
+                    className="text-center text-lg font-mono h-14 tracking-widest"
+                    value={txnId}
+                    onChange={(e) => setTxnId(e.target.value.replace(/[^a-zA-Z0-9]/g, ""))}
+                  />
 
                   <div className="space-y-2">
                     <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -415,7 +485,7 @@ const Checkout = () => {
                           </button>
                         </div>
                       ) : (
-                        <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-primary/20 rounded-xl bg-primary/5 cursor-pointer hover:bg-primary/10 transition-all border-spacing-4">
+                        <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-primary/20 rounded-xl bg-primary/5 cursor-pointer hover:bg-primary/10 transition-all">
                           <div className="flex flex-col items-center justify-center pt-5 pb-6">
                             {uploadingScreenshot ? (
                               <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -432,6 +502,7 @@ const Checkout = () => {
                       )}
                     </div>
                   </div>
+
                   <Button
                     variant="hero"
                     className="w-full h-14 text-lg shadow-lg"
@@ -458,10 +529,6 @@ const Checkout = () => {
                   <CheckCircle className="h-3 w-3 text-primary" /> Direct Settlement
                 </div>
               </div>
-
-              <button className="text-xs text-muted-foreground underline w-full" onClick={() => setStep("details")}>
-                ← Go back to change details
-              </button>
             </div>
           </div>
         )}
@@ -486,19 +553,19 @@ const Checkout = () => {
                 <span className="text-muted-foreground">{t("checkout.subtotal")}</span>
                 <span>₹{cartTotal}</span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">{t("checkout.delivery_fee")}</span>
-                <span className={deliveryCharge === 0 ? "text-primary font-semibold" : ""}>
-                  {deliveryCharge === 0 ? `${t("checkout.free")} 🎉` : `₹${deliveryCharge}`}
-                </span>
-              </div>
+              {form.region && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Delivery ({form.region === "hyderabad" ? "Hyd" : "AP/TS"})</span>
+                  <span className="font-semibold text-primary">₹{deliveryCharge}</span>
+                </div>
+              )}
             </div>
             <div className="border-t border-border pt-3 flex justify-between text-xl font-bold">
               <span>{t("checkout.total")}</span>
               <span className="text-primary">₹{total}</span>
             </div>
-            {deliveryCharge === 0 && (
-              <p className="text-xs text-primary font-medium">🚚 Free delivery applied!</p>
+            {!form.region && (
+              <p className="text-xs text-muted-foreground">Select delivery region to see final total.</p>
             )}
           </div>
         </div>

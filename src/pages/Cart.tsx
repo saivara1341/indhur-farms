@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/hooks/useCart";
-import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
+import { Minus, Plus, Trash2, ShoppingBag, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "react-i18next";
 import { getSmartFallback } from "@/lib/imageUtils";
@@ -38,8 +38,8 @@ const Cart = () => {
   return (
     <main className="container mx-auto px-4 py-10">
       <div className="mb-4">
-        <Link to="/products" className="text-sm font-medium text-primary hover:underline flex items-center gap-1">
-          <ShoppingBag className="h-4 w-4" /> {t('cart.continue_shopping') || "← Continue Shopping"}
+        <Link to="/products" className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-primary shadow-sm transition-all hover:bg-primary/5 hover:shadow-md">
+          <ArrowLeft className="h-4 w-4" /> {t('cart.continue_shopping') || "← Continue Shopping"}
         </Link>
       </div>
       <h1 className="mb-8 font-display text-3xl font-bold">{t('cart.title')}</h1>
@@ -86,13 +86,22 @@ const Cart = () => {
           ))}
         </div>
 
+        {/* Order Summary — no delivery fee shown here */}
         <div className="rounded-xl border border-border bg-card p-6 shadow-card h-fit">
           <h3 className="mb-4 font-display text-lg font-semibold">{t('checkout.order_summary')}</h3>
           <div className="space-y-2 text-sm">
-            <div className="flex justify-between"><span className="text-muted-foreground">{t('checkout.subtotal')}</span><span>₹{cartTotal}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">{t('checkout.delivery_fee')}</span><span>{cartTotal >= 500 ? t('checkout.free') : "₹40"}</span></div>
+            {items.map(item => (
+              <div key={item.id} className="flex justify-between">
+                <span className="text-muted-foreground">{item.product.name} × {item.quantity}</span>
+                <span>₹{item.quantity * Number(item.product.price)}</span>
+              </div>
+            ))}
             <div className="my-3 border-t border-border" />
-            <div className="flex justify-between text-lg font-bold"><span>{t('checkout.total')}</span><span className="text-primary">₹{cartTotal + (cartTotal >= 500 ? 0 : 40)}</span></div>
+            <div className="flex justify-between text-lg font-bold">
+              <span>{t('checkout.total')}</span>
+              <span className="text-primary">₹{cartTotal}</span>
+            </div>
+            <p className="text-xs text-muted-foreground pt-1">🚚 Delivery charges calculated at checkout based on your region.</p>
           </div>
           <Link to="/checkout">
             <Button variant="hero" size="lg" className="mt-6 w-full">{t('cart.checkout')}</Button>

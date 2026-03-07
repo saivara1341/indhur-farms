@@ -9,6 +9,7 @@ import farmJourney from "@/assets/farm-journey.png";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { getTranslatedBaseName } from "@/lib/translations";
+import { useEffect, useRef, useCallback } from "react";
 
 const Index = () => {
   const { t } = useTranslation();
@@ -19,6 +20,60 @@ const Index = () => {
     { icon: Sprout, title: t("features.origin.title"), desc: t("features.origin.desc") },
     { icon: HandCoins, title: t("features.direct.title"), desc: t("features.direct.desc") },
   ];
+
+  // ── Auto-scroll: activates after 2s of idle (no touch/mouse/keyboard/scroll) ──
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const isScrollingRef = useRef(false);
+  const SCROLL_SPEED = 0.7; // px per frame
+  const IDLE_DELAY = 2000;  // ms
+
+  const stopAutoScroll = useCallback(() => {
+    isScrollingRef.current = false;
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+  }, []);
+
+  const startAutoScroll = useCallback(() => {
+    if (isScrollingRef.current) return;
+    isScrollingRef.current = true;
+
+    const step = () => {
+      if (!isScrollingRef.current) return;
+      const atBottom = window.scrollY + window.innerHeight >= document.body.scrollHeight - 2;
+      if (atBottom) {
+        stopAutoScroll();
+        return;
+      }
+      window.scrollBy(0, SCROLL_SPEED);
+      rafRef.current = requestAnimationFrame(step);
+    };
+    rafRef.current = requestAnimationFrame(step);
+  }, [stopAutoScroll]);
+
+  const resetIdleTimer = useCallback(() => {
+    stopAutoScroll();
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    idleTimerRef.current = setTimeout(startAutoScroll, IDLE_DELAY);
+  }, [stopAutoScroll, startAutoScroll]);
+
+  useEffect(() => {
+    const events = ["mousemove", "mousedown", "touchstart", "touchmove", "keydown", "wheel", "scroll"];
+    events.forEach(ev => window.addEventListener(ev, resetIdleTimer, { passive: true }));
+
+    // Start idle timer on mount
+    idleTimerRef.current = setTimeout(startAutoScroll, IDLE_DELAY);
+
+    return () => {
+      events.forEach(ev => window.removeEventListener(ev, resetIdleTimer));
+      stopAutoScroll();
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    };
+  }, [resetIdleTimer, startAutoScroll, stopAutoScroll]);
+
+
 
   const { data: featuredProducts } = useQuery({
     queryKey: ["featured-products"],

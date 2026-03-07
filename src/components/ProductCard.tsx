@@ -1,11 +1,12 @@
 import { Link } from "react-router-dom";
-import { ShoppingCart } from "lucide-react";
+import { ShoppingCart, Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/hooks/useCart";
 import { cn } from "@/lib/utils";
 import { getSmartFallback, DEFAULT_FARM_IMAGE } from "@/lib/imageUtils";
 import { useTranslation } from "react-i18next";
 import { getTranslatedBaseName } from "@/lib/translations";
+import { useState } from "react";
 
 export interface ProductVariant {
   id: string;
@@ -22,9 +23,6 @@ interface ProductCardProps {
   variants: ProductVariant[];
 }
 
-
-import { useState } from "react";
-
 // ── Component ─────────────────────────────────────────────────
 const ProductCard = ({ baseName, variants }: ProductCardProps) => {
   const { t } = useTranslation();
@@ -33,16 +31,13 @@ const ProductCard = ({ baseName, variants }: ProductCardProps) => {
   // Sort variants by price so the lowest price variant is selected by default
   const sortedVariants = [...variants].sort((a, b) => a.price - b.price);
   const [selectedVariantId, setSelectedVariantId] = useState<string>(sortedVariants[0]?.id || "");
+  const [qty, setQty] = useState(1);
 
   const selectedVariant = sortedVariants.find(v => v.id === selectedVariantId) || sortedVariants[0];
 
   if (!selectedVariant) return null;
 
-  const { id, name, slug, price, compareAtPrice, unit } = selectedVariant;
-
-  const discount = compareAtPrice
-    ? Math.round(((compareAtPrice - price) / compareAtPrice) * 100)
-    : 0;
+  const { id, name, slug, price, unit } = selectedVariant;
 
   // Admin upload takes priority. Use smart fallback if no image is available.
   const customImageUrl = selectedVariant.imageUrl || sortedVariants.find(v => v.imageUrl)?.imageUrl;
@@ -50,15 +45,6 @@ const ProductCard = ({ baseName, variants }: ProductCardProps) => {
 
   return (
     <div className="group relative overflow-hidden rounded-2xl border border-primary/5 bg-card shadow-premium transition-all duration-500 hover-lift active:scale-[0.98] flex flex-col">
-      {discount > 0 && (
-        <span className="absolute left-2 top-2 z-10 express-badge shadow-lift">
-          {discount}% OFF
-        </span>
-      )}
-      <div className="absolute right-2 top-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-        <span className="express-badge bg-primary text-white">Express</span>
-      </div>
-
       <Link to={`/product/${slug}`}>
         <div className="aspect-[4/5] overflow-hidden bg-muted/30">
           <img
@@ -68,7 +54,6 @@ const ProductCard = ({ baseName, variants }: ProductCardProps) => {
             loading="lazy"
             onError={(e) => {
               const img = e.target as HTMLImageElement;
-              // If smart fallback fails, try generic farm image
               if (img.src !== DEFAULT_FARM_IMAGE) {
                 img.src = DEFAULT_FARM_IMAGE;
               }
@@ -78,13 +63,6 @@ const ProductCard = ({ baseName, variants }: ProductCardProps) => {
       </Link>
 
       <div className="p-3 flex flex-col flex-1">
-        <div className="flex items-center gap-1 mb-1">
-          <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-          <span className="text-[10px] font-bold text-primary uppercase tracking-tighter">
-            {t("product_detail.organic").replace(/^🌿\s*/, "")}
-          </span>
-        </div>
-
         <Link to={`/product/${slug}`} className="mb-2 block">
           <h3 className="font-display text-base font-bold text-foreground line-clamp-2 leading-tight group-hover:text-primary transition-colors">
             {getTranslatedBaseName(baseName, t)}
@@ -93,7 +71,7 @@ const ProductCard = ({ baseName, variants }: ProductCardProps) => {
 
         <div className="mt-auto">
           {sortedVariants.length > 1 ? (
-            <div className="mb-4">
+            <div className="mb-3">
               <div className="flex flex-wrap gap-2">
                 {sortedVariants.map((v) => {
                   const isActive = selectedVariantId === v.id;
@@ -103,6 +81,7 @@ const ProductCard = ({ baseName, variants }: ProductCardProps) => {
                       onClick={(e) => {
                         e.preventDefault();
                         setSelectedVariantId(v.id);
+                        setQty(1);
                       }}
                       className={cn(
                         "group relative flex flex-col items-center justify-center rounded-xl border px-3 py-1.5 transition-all duration-300",
@@ -125,27 +104,43 @@ const ProductCard = ({ baseName, variants }: ProductCardProps) => {
               </div>
             </div>
           ) : (
-            <div className="h-8 mb-4 flex items-center">
+            <div className="h-8 mb-3 flex items-center">
               {unit && <span className="text-[10px] font-bold text-primary uppercase tracking-widest px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20">{unit} - ₹{price}</span>}
             </div>
           )}
 
-          <div className="flex items-center justify-between mt-auto">
-            <div className="flex flex-col">
-              <div className="flex items-center gap-1.5">
-                <span className="text-xl font-black text-foreground drop-shadow-sm">₹{price}</span>
-                {compareAtPrice && (
-                  <span className="text-xs text-muted-foreground/60 line-through decoration-destructive/30">₹{compareAtPrice}</span>
-                )}
-              </div>
+          {/* Price + Quantity + Add to Cart */}
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xl font-black text-foreground drop-shadow-sm">₹{price}</span>
+
+            {/* Quantity selector */}
+            <div className="flex items-center gap-1 rounded-lg border border-border bg-background">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={(e) => { e.preventDefault(); setQty(Math.max(1, qty - 1)); }}
+              >
+                <Minus className="h-3 w-3" />
+              </Button>
+              <span className="w-5 text-center text-xs font-bold">{qty}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={(e) => { e.preventDefault(); setQty(qty + 1); }}
+              >
+                <Plus className="h-3 w-3" />
+              </Button>
             </div>
 
             <Button
               size="icon"
-              className="h-10 w-10 shrink-0 rounded-2xl bg-primary shadow-premium hover:scale-110 active:scale-95 transition-all group/btn"
+              className="h-9 w-9 shrink-0 rounded-2xl bg-primary shadow-premium hover:scale-110 active:scale-95 transition-all group/btn"
               onClick={(e) => {
                 e.preventDefault();
-                addToCart(id);
+                addToCart(id, qty);
+                setQty(1);
               }}
             >
               <ShoppingCart className="h-4 w-4 fill-current group-hover/btn:rotate-12 transition-transform" />
