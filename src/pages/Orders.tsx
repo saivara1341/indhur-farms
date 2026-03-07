@@ -95,6 +95,16 @@ const Orders = () => {
                   </div>
                 )}
 
+                {order.status === "confirmed" && (
+                  <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex items-start gap-3 mb-4 animate-in fade-in slide-in-from-top-2">
+                    <CheckCircle className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-bold text-primary">Order Confirmed! 🎉</p>
+                      <p className="text-xs text-primary/70">Your payment has been verified. We are now preparing your fresh farm products for delivery.</p>
+                    </div>
+                  </div>
+                )}
+
                 {order.delivery_receipts && order.delivery_receipts.length > 0 && (
                   <div className="space-y-3">
                     {order.delivery_receipts.map((receipt: any) => (

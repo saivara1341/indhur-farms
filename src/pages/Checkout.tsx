@@ -13,7 +13,7 @@ import { useSettings } from "@/hooks/useSettings";
 import { useRazorpay } from "@/hooks/useRazorpay";
 import {
   ShoppingBag, CreditCard, Truck, CheckCircle,
-  Smartphone, ArrowRight, Loader2, Copy, QrCode, Info
+  Smartphone, ArrowRight, Loader2, Copy, QrCode, Info, X, UploadCloud
 } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
 
@@ -30,6 +30,8 @@ const Checkout = () => {
   const [form, setForm] = useState({ name: "", phone: "", address: "", notes: "", region: "" });
   const [paymentMode, setPaymentMode] = useState<"app" | "qr" | "id">("app");
   const [txnId, setTxnId] = useState("");
+  const [screenshotUrl, setScreenshotUrl] = useState("");
+  const [uploadingScreenshot, setUploadingScreenshot] = useState(false);
 
   const deliveryCharge = form.region === "hyderabad" ? 100 : form.region === "ap-ts" ? 120 : 0;
   const total = cartTotal + deliveryCharge;
@@ -43,6 +45,48 @@ const Checkout = () => {
       toast({ title: "Please fill all required fields", variant: "destructive" });
       return;
     }
+
+    // Strict Mobile Validation: 10 digits, starts with 6, 7, 8, or 9
+    const phoneRegex = /^[6-9]\d{9}$/;
+    if (!phoneRegex.test(form.phone)) {
+      toast({
+        title: "Invalid Mobile Number",
+        description: "Please enter a valid 10-digit Indian mobile number (e.g., 9876543210).",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Address Verification Logic
+    const addressLower = form.address.toLowerCase();
+    const region = form.region.toLowerCase();
+
+    if (region === "hyderabad") {
+      const hydKeywords = ["hyderabad", "hyd", "secunderabad", "cyberabad", "kondapur", "madhapur", "gachibowli", "miyapur", "kukatpally", "jubilee", "banjara"];
+      const isHyd = hydKeywords.some(k => addressLower.includes(k));
+      if (!isHyd) {
+        toast({
+          title: "Address Mismatch?",
+          description: "Your address doesn't seem to be in Hyderabad, but 'Hyderabad' region is selected. Please verify.",
+          variant: "destructive"
+        });
+        // We'll let them proceed after notification (as per user "notify them"), 
+        // but it's safer to stay on the page if it's a clear mistake.
+        // For now, let's just warn and allow proceed or stay? 
+        // "you need to notify them" -> warning toast is enough.
+      }
+    } else if (region === "ap-ts") {
+      const stateKeywords = ["andhra", "telangana", "ap", "ts", "vijayawada", "vizag", "visakhapatnam", "guntur", "warangal", "tirupati"];
+      const isState = stateKeywords.some(k => addressLower.includes(k));
+      if (!isState) {
+        toast({
+          title: "Verify State",
+          description: "Please ensure your address is within Andhra Pradesh or Telangana for this shipping rate.",
+          variant: "destructive"
+        });
+      }
+    }
+
     setStep("pay");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -66,6 +110,7 @@ const Checkout = () => {
           notes: form.notes,
           status: "pending",
           payment_txn_id: txnId,
+          payment_screenshot_url: screenshotUrl || null,
           payment_status: "pending", // Manual verification needed
         })
         .select()
@@ -99,6 +144,42 @@ const Checkout = () => {
     toast({ title: "UPI ID Copied", description: "You can now paste it in your payment app." });
   };
 
+  const handleScreenshotUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Limit size to 5MB
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Screenshot must be less than 5MB", variant: "destructive" });
+      return;
+    }
+
+    setUploadingScreenshot(true);
+    const fileExt = file.name.split('.').pop();
+    const fileName = `receipt-${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
+    const filePath = `payments/${fileName}`;
+
+    try {
+      const { error: uploadError } = await supabase.storage
+        .from('product-images') // Reusing existing bucket
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('product-images')
+        .getPublicUrl(filePath);
+
+      setScreenshotUrl(publicUrl);
+      toast({ title: "✅ Screenshot Uploaded", description: "Payment receipt attached to order." });
+    } catch (err: any) {
+      console.error("Upload error:", err);
+      toast({ title: "Upload Failed", description: err.message, variant: "destructive" });
+    } finally {
+      setUploadingScreenshot(false);
+    }
+  };
+
   if (!user) { navigate("/auth"); return null; }
   if (items.length === 0) { navigate("/cart"); return null; }
 
@@ -128,6 +209,22 @@ const Checkout = () => {
             {i < arr.length - 1 && <ArrowRight className="h-4 w-4 text-muted-foreground" />}
           </div>
         ))}
+      </div>
+      <div className="mb-6 flex items-center justify-between">
+        <button
+          onClick={() => navigate("/cart")}
+          className="text-sm font-medium text-primary hover:underline flex items-center gap-1 transition-all hover:gap-2"
+        >
+          <ShoppingBag className="h-4 w-4" /> {t('cart.back_to_cart') || "← Back to Cart"}
+        </button>
+        {step === "pay" && (
+          <button
+            onClick={() => setStep("details")}
+            className="text-xs font-semibold text-muted-foreground hover:text-primary transition-colors"
+          >
+            Edit Delivery Details
+          </button>
+        )}
       </div>
 
       <div className="grid gap-8 lg:grid-cols-3">
@@ -300,8 +397,42 @@ const Checkout = () => {
                       placeholder="Enter 12-digit Transaction ID (Ref No.)"
                       className="text-center text-lg font-mono h-14 tracking-widest"
                       value={txnId}
-                      onChange={(e) => setTxnId(e.target.value)}
+                      onChange={(e) => setTxnId(e.target.value.replace(/[^a-zA-Z0-9]/g, ""))}
                     />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Upload Payment Screenshot (Optional but Recommended)
+                    </Label>
+                    <div className="relative">
+                      {screenshotUrl ? (
+                        <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-primary/20 bg-primary/5">
+                          <img src={screenshotUrl} alt="Receipt" className="h-full w-full object-contain" />
+                          <button
+                            onClick={() => setScreenshotUrl("")}
+                            className="absolute top-2 right-2 rounded-full bg-white/80 p-1.5 text-destructive shadow-sm hover:bg-white"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-primary/20 rounded-xl bg-primary/5 cursor-pointer hover:bg-primary/10 transition-all border-spacing-4">
+                          <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                            {uploadingScreenshot ? (
+                              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                            ) : (
+                              <UploadCloud className="h-8 w-8 text-primary mb-2" />
+                            )}
+                            <p className="text-xs font-bold text-primary uppercase tracking-tight">
+                              {uploadingScreenshot ? "Uploading..." : "Click to Upload Screenshot"}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground mt-1">PNG, JPG or JPEG (Max 5MB)</p>
+                          </div>
+                          <input type="file" accept="image/*" className="hidden" onChange={handleScreenshotUpload} disabled={uploadingScreenshot} />
+                        </label>
+                      )}
+                    </div>
                   </div>
                   <Button
                     variant="hero"

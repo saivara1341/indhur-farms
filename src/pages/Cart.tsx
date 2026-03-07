@@ -37,13 +37,28 @@ const Cart = () => {
 
   return (
     <main className="container mx-auto px-4 py-10">
+      <div className="mb-4">
+        <Link to="/products" className="text-sm font-medium text-primary hover:underline flex items-center gap-1">
+          <ShoppingBag className="h-4 w-4" /> {t('cart.continue_shopping') || "← Continue Shopping"}
+        </Link>
+      </div>
       <h1 className="mb-8 font-display text-3xl font-bold">{t('cart.title')}</h1>
 
       <div className="grid gap-8 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
           {items.map(item => (
             <div key={item.id} className="flex gap-4 rounded-xl border border-border bg-card p-4 shadow-card">
-              <img src={item.product.image_url || getSmartFallback(item.product.name, "")} alt={item.product.name} className="h-24 w-24 rounded-lg object-cover" />
+              <img
+                src={item.product.image_url || getSmartFallback(item.product.name, "")}
+                alt={item.product.name}
+                className="h-24 w-24 rounded-lg object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  if (target.src !== getSmartFallback(item.product.name, "")) {
+                    target.src = getSmartFallback(item.product.name, "");
+                  }
+                }}
+              />
               <div className="flex flex-1 flex-col justify-between">
                 <div>
                   <h3 className="font-display font-semibold">{item.product.name}</h3>

@@ -67,6 +67,7 @@ create table if not exists public.orders (
   status           text default 'pending' check (status in ('pending','confirmed','shipped','delivered','cancelled')),
   payment_status   text default 'pending' check (payment_status in ('pending','paid','failed','refunded')),
   payment_txn_id   text,
+  payment_screenshot_url text,
   created_at       timestamptz default now(),
   updated_at       timestamptz default now()
 );

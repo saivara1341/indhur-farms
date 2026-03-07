@@ -7,9 +7,7 @@ import { useTranslation } from "react-i18next";
 import { useAdmin } from "@/hooks/useAdmin";
 import { Plus, Clock } from "lucide-react";
 
-// Categories that currently have live products.
-// Anything NOT in this list is treated as "Coming Soon" and shows no products.
-const LIVE_CATEGORY_SLUGS = ["turmeric-products"];
+// Categories can be managed via Admin panel.
 
 const Products = () => {
   const { t } = useTranslation();
@@ -34,17 +32,12 @@ const Products = () => {
     (c) => c.slug !== "farmer-to-consumer"
   );
 
-  const liveCategories = (categories as any[]).filter((c) =>
-    LIVE_CATEGORY_SLUGS.includes(c.slug)
-  );
-  const comingSoonCategories = (categories as any[]).filter(
-    (c) => !LIVE_CATEGORY_SLUGS.includes(c.slug)
-  );
+  const liveCategories = categories;
+  const comingSoonCategories: any[] = [];
 
   // Determine if the selected category is live or coming-soon
   const selectedCat = categories.find((c) => c.slug === categorySlug);
-  const isSelectedComingSoon =
-    selectedCat && !LIVE_CATEGORY_SLUGS.includes(selectedCat.slug);
+  const isSelectedComingSoon = false;
 
   const { data: products = [], isLoading } = useQuery({
     queryKey: ["products", categorySlug],

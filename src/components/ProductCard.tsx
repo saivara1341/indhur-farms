@@ -41,7 +41,7 @@ const ProductCard = ({ baseName, variants }: ProductCardProps) => {
     ? Math.round(((compareAtPrice - price) / compareAtPrice) * 100)
     : 0;
 
-  // Admin upload takes priority. If selected variant doesn't have an image, find ANY variant that does!
+  // Admin upload takes priority. Use smart fallback if no image is available.
   const customImageUrl = selectedVariant.imageUrl || sortedVariants.find(v => v.imageUrl)?.imageUrl;
   const displayImage = customImageUrl || getSmartFallback(name, slug);
 
