@@ -75,7 +75,7 @@ const Products = () => {
       {/* Page heading */}
       <div className="mb-2 flex items-center justify-between">
         <h1 className="font-display text-4xl font-black tracking-tight text-foreground">
-          {selectedCat?.name || t("products.page_title")}
+          {selectedCat ? t(`categories.${selectedCat.slug}`) : t("products.page_title")}
         </h1>
         {isAdmin && (
           <Button
@@ -115,7 +115,7 @@ const Products = () => {
               }`}
             onClick={() => setSearchParams({ category: cat.slug })}
           >
-            {cat.name}
+            {t(`categories.${cat.slug}`) || cat.name}
           </Button>
         ))}
 
@@ -139,7 +139,7 @@ const Products = () => {
             Coming Soon!
           </h2>
           <p className="max-w-sm text-muted-foreground">
-            We're working hard to bring <strong>{selectedCat?.name}</strong>{" "}
+            We're working hard to bring <strong>{t(`categories.${selectedCat?.slug}`) || selectedCat?.name}</strong>{" "}
             products to you. Stay tuned — fresh from our farm to your door!
           </p>
           <Button variant="outline" onClick={() => setSearchParams({})}>

@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { useCart } from "@/hooks/useCart";
 import { cn } from "@/lib/utils";
 import { getSmartFallback, DEFAULT_FARM_IMAGE } from "@/lib/imageUtils";
+import { useTranslation } from "react-i18next";
+import { getTranslatedBaseName } from "@/lib/translations";
 
 export interface ProductVariant {
   id: string;
@@ -25,6 +27,7 @@ import { useState } from "react";
 
 // ── Component ─────────────────────────────────────────────────
 const ProductCard = ({ baseName, variants }: ProductCardProps) => {
+  const { t } = useTranslation();
   const { addToCart } = useCart();
 
   // Sort variants by price so the lowest price variant is selected by default
@@ -77,12 +80,14 @@ const ProductCard = ({ baseName, variants }: ProductCardProps) => {
       <div className="p-3 flex flex-col flex-1">
         <div className="flex items-center gap-1 mb-1">
           <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-          <span className="text-[10px] font-bold text-primary uppercase tracking-tighter">Pure Farm Fresh</span>
+          <span className="text-[10px] font-bold text-primary uppercase tracking-tighter">
+            {t("product_detail.organic").replace(/^🌿\s*/, "")}
+          </span>
         </div>
 
         <Link to={`/product/${slug}`} className="mb-2 block">
           <h3 className="font-display text-base font-bold text-foreground line-clamp-2 leading-tight group-hover:text-primary transition-colors">
-            {baseName}
+            {getTranslatedBaseName(baseName, t)}
           </h3>
         </Link>
 

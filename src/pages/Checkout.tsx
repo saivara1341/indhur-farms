@@ -66,14 +66,9 @@ const Checkout = () => {
       const isHyd = hydKeywords.some(k => addressLower.includes(k));
       if (!isHyd) {
         toast({
-          title: "Address Mismatch?",
-          description: "Your address doesn't seem to be in Hyderabad, but 'Hyderabad' region is selected. Please verify.",
           variant: "destructive"
         });
-        // We'll let them proceed after notification (as per user "notify them"), 
-        // but it's safer to stay on the page if it's a clear mistake.
-        // For now, let's just warn and allow proceed or stay? 
-        // "you need to notify them" -> warning toast is enough.
+        return; // Added return to prevent proceeding with mismatch
       }
     } else if (region === "ap-ts") {
       const stateKeywords = ["andhra", "telangana", "ap", "ts", "vijayawada", "vizag", "visakhapatnam", "guntur", "warangal", "tirupati"];
@@ -84,6 +79,7 @@ const Checkout = () => {
           description: "Please ensure your address is within Andhra Pradesh or Telangana for this shipping rate.",
           variant: "destructive"
         });
+        return; // Added return 
       }
     }
 
@@ -211,19 +207,21 @@ const Checkout = () => {
         ))}
       </div>
       <div className="mb-6 flex items-center justify-between">
-        <button
+        <Button
+          variant="ghost"
           onClick={() => navigate("/cart")}
-          className="text-sm font-medium text-primary hover:underline flex items-center gap-1 transition-all hover:gap-2"
+          className="text-sm font-medium text-primary hover:underline flex items-center gap-1 transition-all hover:gap-2 px-0"
         >
-          <ShoppingBag className="h-4 w-4" /> {t('cart.back_to_cart') || "← Back to Cart"}
-        </button>
+          <ShoppingBag className="h-4 w-4" /> {t('nav.cart') || "Cart"}
+        </Button>
         {step === "pay" && (
-          <button
+          <Button
+            variant="ghost"
             onClick={() => setStep("details")}
-            className="text-xs font-semibold text-muted-foreground hover:text-primary transition-colors"
+            className="text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
           >
-            Edit Delivery Details
-          </button>
+            ← Change Delivery Details
+          </Button>
         )}
       </div>
 

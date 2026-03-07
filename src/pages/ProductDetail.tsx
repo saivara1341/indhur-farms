@@ -8,6 +8,14 @@ import { useCart } from "@/hooks/useCart";
 import { useTranslation } from "react-i18next";
 import { getSmartFallback } from "@/lib/imageUtils";
 import { cn } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { getTranslatedBaseName, getTranslatedProductName } from "@/lib/translations";
 
 const ProductDetail = () => {
   const { slug } = useParams();
@@ -85,42 +93,37 @@ const ProductDetail = () => {
           {product.categories && (
             <span className="mb-2 text-sm font-medium text-secondary">{(product.categories as any).name}</span>
           )}
-          <h1 className="font-display text-3xl font-bold lg:text-4xl">{product.baseName || product.name}</h1>
+          <h1 className="font-display text-3xl font-bold lg:text-4xl">
+            {getTranslatedBaseName(product.baseName || product.name, t)}
+          </h1>
 
           {product.variants && product.variants.length > 1 && (
             <div className="mt-8 space-y-3">
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('product_detail.choose_variant') || "Select Size / Quantity"}</label>
-              <div className="flex flex-wrap gap-2">
-                {product.variants.map((v: any) => {
-                  const isActive = product.slug === v.slug;
-                  return (
-                    <button
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                {t('product_detail.choose_variant')}
+              </label>
+              <Select
+                value={product.slug}
+                onValueChange={(value) => navigate(`/product/${value}`)}
+              >
+                <SelectTrigger className="w-full md:w-[300px] h-14 rounded-2xl border-2 border-primary/20 bg-background/50 backdrop-blur-sm shadow-premium focus:ring-primary/20 transition-all hover:border-primary/40">
+                  <SelectValue placeholder={t('product_detail.choose_variant')} />
+                </SelectTrigger>
+                <SelectContent className="rounded-2xl border-2 border-primary/10 shadow-premium backdrop-blur-md">
+                  {product.variants.map((v: any) => (
+                    <SelectItem
                       key={v.id}
-                      onClick={() => navigate(`/product/${v.slug}`)}
-                      className={cn(
-                        "group relative flex flex-col items-center justify-center rounded-xl border-2 px-4 py-2.5 transition-all duration-300",
-                        isActive
-                          ? "border-primary bg-primary/5 shadow-md ring-2 ring-primary/10"
-                          : "border-border bg-card hover:border-primary/20 hover:bg-muted/50"
-                      )}
+                      value={v.slug}
+                      className="rounded-xl py-3 focus:bg-primary/5 transition-colors"
                     >
-                      <span className={cn(
-                        "text-sm font-bold",
-                        isActive ? "text-primary" : "text-foreground"
-                      )}>{v.unit}</span>
-                      <span className={cn(
-                        "text-[10px] font-medium opacity-70",
-                        isActive ? "text-primary" : "text-muted-foreground"
-                      )}>₹{v.price}</span>
-                      {isActive && (
-                        <div className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[8px] text-white">
-                          ✓
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
+                      <div className="flex items-center justify-between w-full min-w-[200px] gap-4">
+                        <span className="font-bold">{v.unit}</span>
+                        <span className="text-sm font-black text-primary">₹{v.price}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
 

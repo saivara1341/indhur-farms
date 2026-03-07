@@ -1,4 +1,11 @@
 {
+  "index": {
+    "farm_journey": {
+      "badge": "Farm to Table",
+      "title": "Experience the journey of food",
+      "desc": "Straight from our fields to your home, without mediators."
+    }
+  },
   "common": {
     "loading": "Loading...",
     "error": "Error",
@@ -10,6 +17,14 @@
     "actions": "Actions",
     "status": "Status",
     "switch_language": "Switch Language"
+  },
+  "categories": {
+    "turmeric-products": "Turmeric Products 🟡",
+    "fruits": "Fruits 🍎",
+    "vegetables": "Vegetables 🥦",
+    "paddy-grains": "Paddy & Grains 🌾",
+    "sugarcane-jaggery": "Sugarcane & Jaggery 🎋",
+    "other-farm-products": "Other Farm Products 🧺"
   },
   "nav": {
     "home": "Home",
@@ -29,6 +44,24 @@
     "delivery": "Farm-to-door shipping across India & globally",
     "shop_btn": "Shop Products",
     "story_btn": "Our Story"
+  },
+  "features": {
+    "f2c": {
+      "title": "Farmer to Consumer",
+      "desc": "Zero chemicals, zero pesticides — pure quality"
+    },
+    "delivery": {
+      "title": "Worldwide Delivery",
+      "desc": "Farm-to-door shipping across India & globally"
+    },
+    "origin": {
+      "title": "Single-Origin",
+      "desc": "Grown on our own turmeric farm in Telangana"
+    },
+    "direct": {
+      "title": "No Middlemen",
+      "desc": "Direct from our farm to your door — fresher, cheaper, better"
+    }
   },
   "featured": {
     "title": "Featured Products",
@@ -52,7 +85,17 @@
     "view_all": "View All Products",
     "updated": "Product updated",
     "created": "Product created",
-    "deleted": "Product deleted"
+    "deleted": "Product deleted",
+    "off": "OFF",
+    "names": {
+      "dry_turmeric_fingers": "Dry Turmeric Fingers",
+      "pure_turmeric_powder": "Pure Turmeric Powder",
+      "chilli_powder": "Pure Chilli Powder"
+    },
+    "descriptions": {
+      "dry_turmeric_fingers": "High-quality dry turmeric fingers for home grinding.",
+      "pure_turmeric_powder": "Pure, stone-ground turmeric powder from Indhur Farms."
+    }
   },
   "cart": {
     "title": "Your Shopping Cart",
@@ -68,7 +111,8 @@
     "checkout": "Proceed to Checkout",
     "continue_shopping": "Continue Shopping",
     "item_added": "Item added to cart",
-    "item_removed": "Item removed from cart"
+    "item_removed": "Item removed from cart",
+    "back_to_cart": "Back to Cart"
   },
   "checkout": {
     "title": "Checkout",

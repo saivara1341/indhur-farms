@@ -8,15 +8,16 @@ import heroBanner from "@/assets/hero-banner.jpg";
 import farmJourney from "@/assets/farm-journey.png";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
+import { getTranslatedBaseName } from "@/lib/translations";
 
 const Index = () => {
   const { t } = useTranslation();
 
   const features = [
-    { icon: Leaf, title: "Farmer to Consumer", desc: "Zero chemicals, zero pesticides — pure pasupu" },
-    { icon: Truck, title: "Worldwide Delivery", desc: "Farm-to-door shipping across India & globally" },
-    { icon: Sprout, title: "Single-Origin", desc: "Grown on our own turmeric farm in Telangana" },
-    { icon: HandCoins, title: "No Middlemen", desc: "Direct from our farm to your door — fresher, cheaper, better" },
+    { icon: Leaf, title: t("features.f2c.title"), desc: t("features.f2c.desc") },
+    { icon: Truck, title: t("features.delivery.title"), desc: t("features.delivery.desc") },
+    { icon: Sprout, title: t("features.origin.title"), desc: t("features.origin.desc") },
+    { icon: HandCoins, title: t("features.direct.title"), desc: t("features.direct.desc") },
   ];
 
   const { data: featuredProducts } = useQuery({
@@ -159,7 +160,7 @@ const Index = () => {
                   viewport={{ once: true }}
                 >
                   <ProductCard
-                    baseName={group.baseName}
+                    baseName={getTranslatedBaseName(group.baseName, t)}
                     variants={group.variants}
                   />
                 </motion.div>
@@ -194,7 +195,7 @@ const Index = () => {
                 viewport={{ once: true }}
                 className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/20 border border-white/30 px-3 py-1 text-xs font-bold uppercase tracking-wider text-white backdrop-blur-md"
               >
-                <Leaf className="h-3 w-3" /> Farm to Table
+                <Leaf className="h-3 w-3" /> {t("index.farm_journey.badge")}
               </motion.span>
               <motion.h3
                 initial={{ opacity: 0, y: 10 }}
@@ -203,7 +204,7 @@ const Index = () => {
                 transition={{ delay: 0.1 }}
                 className="text-3xl md:text-4xl font-display font-bold text-white mb-2"
               >
-                Experience the journey of food
+                {t("index.farm_journey.title")}
               </motion.h3>
               <motion.p
                 initial={{ opacity: 0, y: 10 }}
@@ -212,7 +213,7 @@ const Index = () => {
                 transition={{ delay: 0.2 }}
                 className="text-white/80 max-w-lg leading-relaxed text-sm md:text-base font-medium"
               >
-                Straight from our fields to your home, without mediators.
+                {t("index.farm_journey.desc")}
               </motion.p>
             </div>
           </div>

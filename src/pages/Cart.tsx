@@ -49,13 +49,13 @@ const Cart = () => {
           {items.map(item => (
             <div key={item.id} className="flex gap-4 rounded-xl border border-border bg-card p-4 shadow-card">
               <img
-                src={item.product.image_url || getSmartFallback(item.product.name, "")}
+                src={item.product.image_url || getSmartFallback(item.product.name, item.product.slug)}
                 alt={item.product.name}
                 className="h-24 w-24 rounded-lg object-cover"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
-                  if (target.src !== getSmartFallback(item.product.name, "")) {
-                    target.src = getSmartFallback(item.product.name, "");
+                  if (target.src !== getSmartFallback(item.product.name, item.product.slug)) {
+                    target.src = getSmartFallback(item.product.name, item.product.slug);
                   }
                 }}
               />

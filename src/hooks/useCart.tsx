@@ -16,6 +16,7 @@ interface CartItem {
     image_url: string | null;
     unit: string | null;
     stock: number;
+    slug: string;
   };
 }
 
@@ -56,7 +57,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true);
     const { data, error } = await supabase
       .from("cart_items")
-      .select("id, product_id, quantity, products(id, name, price, image_url, unit, stock)")
+      .select("id, product_id, quantity, products(id, name, price, image_url, unit, stock, slug)")
       .eq("user_id", user.id);
 
     if (!error && data) {
@@ -77,7 +78,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       await updateQuantity(productId, existing.quantity + quantity);
       return;
     }
-    await supabase.from("cart_items").insert({ user_id: user.id, product_id: productId, quantity });
+    await (supabase.from("cart_items") as any).insert({ user_id: user.id, product_id: productId, quantity });
     toast({ title: t('cart.item_added') });
     fetchCart();
   };
@@ -85,7 +86,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const updateQuantity = async (productId: string, quantity: number) => {
     if (!user) return;
     if (quantity <= 0) { await removeFromCart(productId); return; }
-    await supabase.from("cart_items").update({ quantity }).eq("user_id", user.id).eq("product_id", productId);
+    await (supabase.from("cart_items") as any).update({ quantity }).eq("user_id", user.id).eq("product_id", productId);
     fetchCart();
   };
 
