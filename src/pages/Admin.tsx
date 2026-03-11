@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
-import { Package, ShoppingBag, ShoppingCart, Truck, Plus, Pencil, Trash2, CreditCard, Search, ExternalLink, ListTree, LayoutDashboard, Settings, ChevronRight, BarChart3, Users, Shield, ImagePlus, X, UploadCloud, Loader2, AlertTriangle, TrendingUp, Zap, Tag, TrendingDown, DollarSign } from "lucide-react";
+import { Package, ShoppingBag, ShoppingCart, Truck, Plus, Pencil, Trash2, CreditCard, Search, ExternalLink, ListTree, LayoutDashboard, Settings, ChevronRight, BarChart3, Users, Shield, ImagePlus, X, UploadCloud, Loader2, AlertTriangle, TrendingUp, Zap, Tag, TrendingDown, DollarSign, ClipboardList } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { seedSampleData } from "@/lib/seedData";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -125,6 +125,7 @@ const Admin = () => {
     { id: "orders", label: t('admin.orders'), icon: ShoppingBag, badge: (pendingCount || 0) > 0 ? pendingCount : null, badgeColor: "bg-red-500" },
     { id: "offers", label: "Offers & Discounts", icon: Tag },
     { id: "delivery", label: t('admin.logistics'), icon: Truck },
+    { id: "records", label: t('admin.records'), icon: ClipboardList },
     { id: "settings", label: t('admin.settings'), icon: Settings },
   ];
 
@@ -219,8 +220,9 @@ const Admin = () => {
               {activeTab === "orders" && <OrdersTab />}
               {activeTab === "offers" && <OffersTab />}
               {activeTab === "delivery" && <DeliveryTab />}
+              {activeTab === "records" && <RecordsTab />}
               {activeTab === "settings" && <SettingsTab />}
-              {!["dashboard", "products", "categories", "orders", "offers", "delivery", "settings"].includes(activeTab) && (
+              {!["dashboard", "products", "categories", "orders", "offers", "delivery", "records", "settings"].includes(activeTab) && (
                 <div className="flex flex-col items-center justify-center py-20">
                   <p className="text-muted-foreground">{t('admin.tab_not_found')}: {activeTab}</p>
                   <Button variant="link" onClick={() => setSearchParams({ tab: "dashboard" })}>{t('admin.return_to_dashboard')}</Button>
@@ -1893,6 +1895,163 @@ CREATE POLICY "Admins manage offers" ON product_offers FOR ALL USING (true);`}</
           <p className="mt-4 text-xs text-muted-foreground text-center">Enter your cost price to see the analysis.</p>
         )}
       </div>
+    </div>
+  );
+};
+
+// ─── Records Tab ───
+const RecordsTab = () => {
+  const { t } = useTranslation();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({ title: "", type: "note", content: "" });
+
+  const { data: records, isLoading } = useQuery({
+    queryKey: ["admin-records"],
+    queryFn: async () => {
+      const { data } = await (supabase.from("admin_records" as any).select("*") as any).order("created_at", { ascending: false });
+      return (data || []) as any[];
+    },
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.title || !form.content) {
+      toast({ title: "Please fill all required fields", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
+    try {
+      const { error } = await (supabase.from("admin_records" as any).insert([form] as any) as any);
+      if (error) throw error;
+      toast({ title: "✅ Record added successfully" });
+      setForm({ title: "", type: "note", content: "" });
+      setShowForm(false);
+      queryClient.invalidateQueries({ queryKey: ["admin-records"] });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteRecord = async (id: string) => {
+    if (!confirm("Delete this record?")) return;
+    const { error } = await (supabase.from("admin_records" as any).delete() as any).eq("id", id);
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    toast({ title: "Record deleted" });
+    queryClient.invalidateQueries({ queryKey: ["admin-records"] });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="font-display text-2xl font-bold">{t('admin.records_title')}</h2>
+          <p className="text-sm text-muted-foreground">{t('admin.records_desc')}</p>
+        </div>
+        <Button onClick={() => setShowForm(!showForm)} className="gap-2">
+          <Plus className="h-4 w-4" /> {t('admin.add_record')}
+        </Button>
+      </div>
+
+      {/* SQL Setup Notice */}
+      <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm">
+        <p className="font-bold text-primary flex items-center gap-2"><Info className="h-4 w-4" /> First-time Setup</p>
+        <p className="text-muted-foreground mt-1 text-xs">If records don't save, run this SQL in your Supabase SQL editor:</p>
+        <pre className="mt-2 rounded bg-black/5 p-3 text-[10px] font-mono overflow-x-auto whitespace-pre-wrap">{`CREATE TABLE IF NOT EXISTS admin_records (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  title TEXT NOT NULL,
+  type TEXT NOT NULL CHECK (type IN ('order', 'note', 'delivery')),
+  content TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE admin_records ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Admins manage records" ON admin_records FOR ALL USING (true);`}</pre>
+      </div>
+
+      {showForm && (
+        <Card className="shadow-md">
+          <CardHeader>
+            <CardTitle>{t('admin.add_record')}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>{t('admin.record_title')} *</Label>
+                  <Input required value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Morning Logistics Log" />
+                </div>
+                <div className="space-y-2">
+                  <Label>{t('admin.record_type')}</Label>
+                  <Select value={form.type} onValueChange={v => setForm(f => ({ ...f, type: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="note">📝 {t('admin.notes')}</SelectItem>
+                      <SelectItem value="order">📦 {t('admin.manual_order')}</SelectItem>
+                      <SelectItem value="delivery">🚚 {t('admin.logistics')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>{t('admin.record_content')} *</Label>
+                <Textarea required rows={4} value={form.content} onChange={e => setForm(f => ({ ...f, content: e.target.value }))} placeholder="Enter manual order details or transport notes..." />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" type="button" onClick={() => setShowForm(false)}>Cancel</Button>
+                <Button type="submit" disabled={saving}>{saving ? "Saving..." : t('admin.add_record')}</Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
+      {isLoading ? (
+        <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+      ) : records && records.length > 0 ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {records.map((r: any) => (
+            <Card key={r.id} className="group relative overflow-hidden transition-all hover:shadow-md">
+              <div className={`absolute left-0 top-0 h-1 w-full ${
+                r.type === 'order' ? 'bg-blue-500' : r.type === 'delivery' ? 'bg-orange-500' : 'bg-primary'
+              }`} />
+              <CardHeader className="pb-2">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <CardTitle className="text-base font-bold">{r.title}</CardTitle>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                      {new Date(r.created_at).toLocaleDateString()} at {new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive/50 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => deleteRecord(r.id)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm whitespace-pre-wrap text-muted-foreground line-clamp-6">{r.content}</p>
+                <div className="mt-4 flex items-center gap-2">
+                   <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                     r.type === 'order' ? 'bg-blue-100 text-blue-700' :
+                     r.type === 'delivery' ? 'bg-orange-100 text-orange-700' :
+                     'bg-primary/10 text-primary'
+                   }`}>
+                     {r.type}
+                   </span>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-2xl border-2 border-dashed border-muted p-12 text-center bg-muted/5">
+          <ClipboardList className="mx-auto mb-4 h-12 w-12 text-muted-foreground/30" />
+          <h3 className="text-xl font-bold">{t('admin.records_empty')}</h3>
+        </div>
+      )}
     </div>
   );
 };

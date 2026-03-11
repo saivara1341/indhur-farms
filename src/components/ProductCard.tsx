@@ -26,18 +26,21 @@ interface ProductCardProps {
 // ── Component ─────────────────────────────────────────────────
 const ProductCard = ({ baseName, variants }: ProductCardProps) => {
   const { t } = useTranslation();
-  const { addToCart } = useCart();
+  const { items, addToCart, updateQuantity } = useCart();
 
   // Sort variants by price so the lowest price variant is selected by default
   const sortedVariants = [...variants].sort((a, b) => a.price - b.price);
   const [selectedVariantId, setSelectedVariantId] = useState<string>(sortedVariants[0]?.id || "");
-  const [qty, setQty] = useState(1);
 
   const selectedVariant = sortedVariants.find(v => v.id === selectedVariantId) || sortedVariants[0];
 
   if (!selectedVariant) return null;
 
   const { id, name, slug, price, unit } = selectedVariant;
+
+  // Check if the current variant is already in the cart
+  const cartItem = items.find(item => item.product_id === id);
+  const isInCart = !!cartItem;
 
   // Admin upload takes priority. Use smart fallback if no image is available.
   const customImageUrl = selectedVariant.imageUrl || sortedVariants.find(v => v.imageUrl)?.imageUrl;
@@ -70,8 +73,11 @@ const ProductCard = ({ baseName, variants }: ProductCardProps) => {
         </Link>
 
         <div className="mt-auto">
-          {sortedVariants.length > 1 ? (
-            <div className="mb-3">
+          <div className="mb-3">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block mb-1.5 ml-0.5">
+              {t("products.quantity_label", "Quantity:")}
+            </span>
+            {sortedVariants.length > 1 ? (
               <div className="flex flex-wrap gap-2">
                 {sortedVariants.map((v) => {
                   const isActive = selectedVariantId === v.id;
@@ -81,7 +87,6 @@ const ProductCard = ({ baseName, variants }: ProductCardProps) => {
                       onClick={(e) => {
                         e.preventDefault();
                         setSelectedVariantId(v.id);
-                        setQty(1);
                       }}
                       className={cn(
                         "group relative flex flex-col items-center justify-center rounded-xl border px-3 py-1.5 transition-all duration-300",
@@ -102,50 +107,62 @@ const ProductCard = ({ baseName, variants }: ProductCardProps) => {
                   );
                 })}
               </div>
-            </div>
-          ) : (
-            <div className="h-8 mb-3 flex items-center">
-              {unit && <span className="text-[10px] font-bold text-primary uppercase tracking-widest px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20">{unit} - ₹{price}</span>}
-            </div>
-          )}
+            ) : (
+              <div className="flex items-center">
+                {unit && (
+                  <span className="text-[10px] font-bold text-primary uppercase tracking-widest px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20">
+                    {unit} - ₹{price}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
 
-          {/* Price + Quantity + Add to Cart */}
-          <div className="flex items-center justify-between gap-2">
+          {/* Price + Action Button */}
+          <div className="flex items-center justify-between gap-2 border-t border-border/10 pt-3 mt-1">
             <span className="text-xl font-black text-foreground drop-shadow-sm">₹{price}</span>
 
-            {/* Quantity selector */}
-            <div className="flex items-center gap-1 rounded-lg border border-border bg-background">
+            {isInCart ? (
+              <div className="flex items-center gap-1.5 rounded-xl border-2 border-primary/20 bg-primary/5 p-0.5 shadow-sm">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-lg hover:bg-primary/10 text-primary transition-colors"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    updateQuantity(id, (cartItem?.quantity || 0) - 1);
+                  }}
+                >
+                  <Minus className="h-4 w-4 stroke-[3px]" />
+                </Button>
+                <span className="w-5 text-center text-sm font-black text-primary">{cartItem?.quantity}</span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-lg hover:bg-primary/10 text-primary transition-colors"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    updateQuantity(id, (cartItem?.quantity || 0) + 1);
+                  }}
+                >
+                  <Plus className="h-4 w-4 stroke-[3px]" />
+                </Button>
+              </div>
+            ) : (
               <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={(e) => { e.preventDefault(); setQty(Math.max(1, qty - 1)); }}
+                size="sm"
+                className="h-9 px-5 rounded-xl bg-primary shadow-premium hover:shadow-primary/30 hover:scale-105 active:scale-95 transition-all font-bold text-xs uppercase tracking-wider gap-2 group/btn"
+                onClick={(e) => {
+                  e.preventDefault();
+                  addToCart(id, 1);
+                }}
               >
-                <Minus className="h-3 w-3" />
+                <Plus className="h-3.5 w-3.5 group-hover/btn:rotate-90 transition-transform" />
+                {t("products.add_to_cart", "ADD")}
               </Button>
-              <span className="w-5 text-center text-xs font-bold">{qty}</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={(e) => { e.preventDefault(); setQty(qty + 1); }}
-              >
-                <Plus className="h-3 w-3" />
-              </Button>
-            </div>
-
-            <Button
-              size="icon"
-              className="h-9 w-9 shrink-0 rounded-2xl bg-primary shadow-premium hover:scale-110 active:scale-95 transition-all group/btn"
-              onClick={(e) => {
-                e.preventDefault();
-                addToCart(id, qty);
-                setQty(1);
-              }}
-            >
-              <ShoppingCart className="h-4 w-4 fill-current group-hover/btn:rotate-12 transition-transform" />
-            </Button>
+            )}
           </div>
+
         </div>
       </div>
     </div>

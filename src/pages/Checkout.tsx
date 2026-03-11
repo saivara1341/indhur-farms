@@ -242,7 +242,7 @@ const Checkout = () => {
           className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-primary shadow-sm transition-all hover:bg-primary/5"
         >
           <ArrowLeft className="h-4 w-4" />
-          {step === "pay" ? "← Change Delivery Details" : "← Back to Cart"}
+          {step === "pay" ? t("checkout.change_delivery_details") : t("checkout.back_to_cart")}
         </button>
       </div>
 

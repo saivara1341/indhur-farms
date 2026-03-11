@@ -19,8 +19,8 @@
     "switch_language": "भाषा बदलें"
   },
   "categories": {
-    "turmeric-products": "हल्दी उत्पाद 🟡",
-    "fruits": "फल 🍎",
+    "turmeric-powder": "हल्दी पाउडर",
+    "turmeric-roots": "हल्दी की जड़ें",
     "vegetables": "सब्जियाँ 🥦",
     "paddy-grains": "धान और अनाज 🌾",
     "sugarcane-jaggery": "गन्ना और गुड़ 🎋",
@@ -77,7 +77,8 @@
     "no_products": "कोई उत्पाद नहीं मिला",
     "add_catalogue": "सूची में जोड़ें",
     "view_details": "विवरण देखें",
-    "add_to_cart": "कार्ट में जोड़ें",
+    "add_to_cart": "जोड़ें",
+    "quantity_label": "मात्रा:",
     "stock_out": "స్టాక్ खत्म",
     "category": "श्रेणी",
     "price": "कीमत",
@@ -111,8 +112,8 @@
     "back_to_cart": "कार्ट पर वापस जाएं"
   },
   "checkout": {
-    "title": "चेकआउट",
-    "delivery_details": "वितरण विवरण",
+    "back_to_cart": "कार्ट में वापस जाएं",
+    "change_delivery_details": "डिलीवरी विवरण बदलें",
     "full_name": "पूरा नाम",
     "phone": "फ़ोन नंबर",
     "address": "शिपिंग पता",
