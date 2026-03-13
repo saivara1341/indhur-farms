@@ -25,31 +25,19 @@ const ProductDetail = () => {
   const { t } = useTranslation();
 
   const [activeImg, setActiveImg] = useState<string | null>(null);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
 
   const { data: product, isLoading } = useQuery({
     queryKey: ["product", slug],
     queryFn: async () => {
       const { data, error } = await supabase.from("products").select("*, categories(name)").eq("slug", slug).single();
       if (error || !data) return null;
-
-      const productData = data as any;
-      const baseName = productData.name.replace(/\s*(?:-\s*)?[0-9.]+\s*(g|kg|ml|l|grams|kgs)$/i, "").trim();
-
-      // Fetch all variants with the same base name (same category)
-      const { data: variants } = await supabase
-        .from("products")
-        .select("*")
-        .eq("category_id", productData.category_id)
-        .like("name", `${baseName}%`)
-        .order("price", { ascending: true });
-
-      return {
-        ...productData,
-        baseName,
-        variants: variants || [productData],
-      };
+      return data as any;
     },
   });
+
+  const variants = product?.variants || [];
+  const selectedVariant = variants.find((v: any) => v.id === selectedVariantId) || variants[0];
 
   if (isLoading) return (
     <div className="container mx-auto px-4 py-20 flex flex-col items-center justify-center gap-4">
@@ -59,11 +47,11 @@ const ProductDetail = () => {
   );
   if (!product) return <div className="container mx-auto px-4 py-20 text-center text-muted-foreground">{t('product_detail.not_found')}</div>;
 
-  const variantWithImage = product.variants?.find((v: any) => v.image_url);
-  const fallbackImg = getSmartFallback(product.name, product.slug);
-  const currentImg = activeImg || product.image_url || ((product.gallery as string[])?.[0]) || variantWithImage?.image_url || fallbackImg;
-
+  const currentImg = activeImg || product.image_url || ((product.gallery as string[])?.[0]) || getSmartFallback(product.name, product.slug);
   const gallery = (product.gallery as string[]) || [];
+
+  const displayPrice = selectedVariant ? Number(selectedVariant.price) : Number(product.price);
+  const displayUnit = selectedVariant ? selectedVariant.unit : product.unit;
 
   return (
     <main className="container mx-auto px-4 py-10">
@@ -101,26 +89,26 @@ const ProductDetail = () => {
             <span className="mb-2 text-sm font-medium text-secondary">{(product.categories as any).name}</span>
           )}
           <h1 className="font-display text-3xl font-bold lg:text-4xl">
-            {getTranslatedBaseName(product.baseName || product.name, t)}
+            {getTranslatedBaseName(product.name, t)}
           </h1>
 
-          {product.variants && product.variants.length > 1 && (
+          {variants.length > 0 && (
             <div className="mt-8 space-y-3">
               <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                {t('product_detail.choose_variant')}
+                {t('product_detail.choose_variant', 'Select Quantity')}
               </label>
               <Select
-                value={product.slug}
-                onValueChange={(value) => navigate(`/product/${value}`)}
+                value={selectedVariantId || variants[0]?.id}
+                onValueChange={(value) => setSelectedVariantId(value)}
               >
                 <SelectTrigger className="w-full md:w-[300px] h-14 rounded-2xl border-2 border-primary/20 bg-background/50 backdrop-blur-sm shadow-premium focus:ring-primary/20 transition-all hover:border-primary/40">
                   <SelectValue placeholder={t('product_detail.choose_variant')} />
                 </SelectTrigger>
                 <SelectContent className="rounded-2xl border-2 border-primary/10 shadow-premium backdrop-blur-md">
-                  {product.variants.map((v: any) => (
+                  {variants.map((v: any) => (
                     <SelectItem
                       key={v.id}
-                      value={v.slug}
+                      value={v.id}
                       className="rounded-xl py-3 focus:bg-primary/5 transition-colors"
                     >
                       <div className="flex items-center justify-between w-full min-w-[200px] gap-4">
@@ -136,8 +124,8 @@ const ProductDetail = () => {
 
           {/* Price — no discount display */}
           <div className="mt-6 flex items-baseline gap-3">
-            <span className="text-3xl font-black text-primary drop-shadow-sm">₹{Number(product.price)}</span>
-            {product.unit && <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">{t('product_detail.per')} {product.unit}</span>}
+            <span className="text-3xl font-black text-primary drop-shadow-sm">₹{displayPrice * qty}</span>
+            {displayUnit && <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">{t('product_detail.per')} {displayUnit}</span>}
           </div>
 
           <p className="mt-6 leading-relaxed text-muted-foreground">{product.description}</p>
@@ -148,12 +136,11 @@ const ProductDetail = () => {
               <span className="w-8 text-center font-semibold">{qty}</span>
               <Button variant="ghost" size="icon" onClick={() => setQty(qty + 1)}><Plus className="h-4 w-4" /></Button>
             </div>
-            <Button variant="hero" size="lg" className="flex-1" onClick={() => addToCart(product.id, qty)}>
+            <Button variant="hero" size="lg" className="flex-1" onClick={() => addToCart(product.id, qty, selectedVariant?.unit || "")}>
               <ShoppingCart className="mr-2 h-5 w-5" /> {t('products.add_to_cart')}
             </Button>
           </div>
 
-          {/* Stock info only — removed organic/pesticide text */}
           <div className="mt-6 rounded-lg bg-muted p-4 text-sm text-muted-foreground">
             <p>✅ {product.stock > 0 ? `${t('product_detail.in_stock')} (${product.stock} ${t('product_detail.available')})` : t('products.out_of_stock')}</p>
           </div>

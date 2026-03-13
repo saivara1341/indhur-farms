@@ -194,31 +194,15 @@ const Index = () => {
             </div>
 
             <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
-              {Object.values(featuredProducts.reduce((groups: Record<string, any>, product) => {
-                const baseName = product.name.replace(/\s*(?:-\s*)?[0-9.]+\s*(g|kg|ml|l|grams|kgs)$/i, "").trim();
-                if (!groups[baseName]) groups[baseName] = { baseName, variants: [] };
-                groups[baseName].variants.push({
-                  id: product.id,
-                  name: product.name,
-                  slug: product.slug,
-                  price: Number(product.price),
-                  compareAtPrice: product.compare_at_price ? Number(product.compare_at_price) : null,
-                  imageUrl: product.image_url || null,
-                  unit: product.unit || null,
-                });
-                return groups;
-              }, {})).map((group: any, i) => (
+              {featuredProducts.map((product: any, i: number) => (
                 <motion.div
-                  key={i}
+                  key={product.id}
                   initial={{ opacity: 0, scale: 0.9 }}
                   whileInView={{ opacity: 1, scale: 1 }}
                   transition={{ delay: i * 0.1 }}
                   viewport={{ once: true }}
                 >
-                  <ProductCard
-                    baseName={getTranslatedBaseName(group.baseName, t)}
-                    variants={group.variants}
-                  />
+                  <ProductCard product={product} />
                 </motion.div>
               ))}
             </div>

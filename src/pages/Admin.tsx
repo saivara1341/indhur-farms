@@ -644,6 +644,7 @@ const ProductForm = ({ product, categories, onClose, onSaved }: { product: any; 
     category_id: product?.category_id || "",
     is_active: product?.is_active ?? true,
     is_featured: product?.is_featured ?? false,
+    variants: (product?.variants as any[]) || [] as any[],
   });
 
   const [uploading, setUploading] = useState(false);
@@ -726,10 +727,10 @@ const ProductForm = ({ product, categories, onClose, onSaved }: { product: any; 
       image_url: form.image_url || form.gallery[0] || null,
       gallery: form.gallery,
       stock: parseInt(form.stock) || 0,
-      unit: form.unit || null,
       category_id: form.category_id || null,
       is_active: form.is_active,
       is_featured: form.is_featured,
+      variants: form.variants,
     } as any;
 
     try {
@@ -845,6 +846,89 @@ const ProductForm = ({ product, categories, onClose, onSaved }: { product: any; 
             </div>
 
             <div><Label>{t('admin.form.slug')}</Label><Input value={form.slug} onChange={e => setForm(f => ({ ...f, slug: e.target.value }))} className="bg-muted/50 font-mono text-xs" /></div>
+          </div>
+        </div>
+
+        <div className="sm:col-span-2 space-y-4 rounded-xl border border-dashed border-border bg-muted/5 p-4 mt-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Product Variants (Optional)</Label>
+              <p className="text-[10px] text-muted-foreground">Add multiple quantities/weights like 250g, 500g etc.</p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setForm(f => ({
+                ...f,
+                variants: [...f.variants, { id: crypto.randomUUID(), name: "", price: f.price, stock: f.stock, unit: "" }]
+              }))}
+              className="h-8 gap-1.5 text-xs font-bold"
+            >
+              <Plus className="h-3 w-3" /> Add Variant
+            </Button>
+          </div>
+
+          <div className="space-y-3">
+            {form.variants.map((v, i) => (
+              <div key={v.id || i} className="grid grid-cols-12 gap-2 items-end bg-card p-3 rounded-lg border shadow-sm">
+                <div className="col-span-3">
+                  <Label className="text-[10px]">Unit (e.g. 500g)</Label>
+                  <Input
+                    required
+                    value={v.unit}
+                    onChange={e => {
+                      const newVariants = [...form.variants];
+                      newVariants[i] = { ...v, unit: e.target.value, name: `${form.name} ${e.target.value}`.trim() };
+                      setForm(f => ({ ...f, variants: newVariants }));
+                    }}
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div className="col-span-3">
+                  <Label className="text-[10px]">Price (₹)</Label>
+                  <Input
+                    required
+                    type="number"
+                    value={v.price}
+                    onChange={e => {
+                      const newVariants = [...form.variants];
+                      newVariants[i] = { ...v, price: e.target.value };
+                      setForm(f => ({ ...f, variants: newVariants }));
+                    }}
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div className="col-span-4">
+                  <Label className="text-[10px]">Stock</Label>
+                  <Input
+                    required
+                    type="number"
+                    value={v.stock}
+                    onChange={e => {
+                      const newVariants = [...form.variants];
+                      newVariants[i] = { ...v, stock: e.target.value };
+                      setForm(f => ({ ...f, variants: newVariants }));
+                    }}
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div className="col-span-2 flex justify-end pb-0.5">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setForm(f => ({ ...f, variants: f.variants.filter((_, idx) => idx !== i) }))}
+                    className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+            {form.variants.length === 0 && (
+              <p className="text-center py-4 text-xs text-muted-foreground italic">No variants added. Default price/stock will be used.</p>
+            )}
           </div>
         </div>
 
@@ -1011,7 +1095,7 @@ const OrdersTab = () => {
                 {(order.order_items as any[])?.map((item: any) => (
                   <div key={item.id} className="flex items-center gap-1.5 rounded-lg bg-muted px-2.5 py-1.5 text-xs">
                     <img src={item.products?.image_url || getSmartFallback(item.products?.name, item.products?.slug)} alt="" className="h-7 w-7 rounded object-cover" />
-                    <span className="font-medium">{item.products?.name} ×{item.quantity}</span>
+                    <span className="font-medium">{item.products?.name} {item.variant_name && `(${item.variant_name})`} ×{item.quantity}</span>
                   </div>
                 ))}
               </div>

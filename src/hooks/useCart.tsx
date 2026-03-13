@@ -8,7 +8,9 @@ import { useToast } from "@/hooks/use-toast";
 interface CartItem {
   id: string;
   product_id: string;
+  variant_name: string | null;
   quantity: number;
+  price: number;
   product: {
     id: string;
     name: string;
@@ -17,6 +19,7 @@ interface CartItem {
     unit: string | null;
     stock: number;
     slug: string;
+    variants?: any[];
   };
 }
 
@@ -25,9 +28,9 @@ interface CartContextType {
   cartCount: number;
   cartTotal: number;
   loading: boolean;
-  addToCart: (productId: string, quantity?: number) => Promise<void>;
-  updateQuantity: (productId: string, quantity: number) => Promise<void>;
-  removeFromCart: (productId: string) => Promise<void>;
+  addToCart: (productId: string, quantity?: number, variantName?: string) => Promise<void>;
+  updateQuantity: (productId: string, quantity: number, variantName?: string) => Promise<void>;
+  removeFromCart: (productId: string, variantName?: string) => Promise<void>;
   clearCart: () => Promise<void>;
   refetch: () => Promise<void>;
 }
@@ -57,42 +60,64 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true);
     const { data, error } = await supabase
       .from("cart_items")
-      .select("id, product_id, quantity, products(id, name, price, image_url, unit, stock, slug)")
+      .select("id, product_id, variant_name, quantity, products(id, name, price, image_url, unit, stock, slug, variants)")
       .eq("user_id", user.id);
 
     if (!error && data) {
-      setItems(data.map((item: any) => ({ ...item, product: item.products })));
+      setItems(data.map((item: any) => {
+        const product = item.products;
+        let price = Number(product.price || 0);
+        if (item.variant_name && product.variants) {
+          // Check both name and unit for variant matching
+          const variant = product.variants.find((v: any) => (v.name || v.unit) === item.variant_name || v.unit === item.variant_name);
+          if (variant) price = Number(variant.price);
+        }
+        return { ...item, product, price };
+      }));
     }
     setLoading(false);
   }, [user]);
 
   useEffect(() => { fetchCart(); }, [fetchCart]);
 
-  const addToCart = async (productId: string, quantity = 1) => {
+  const addToCart = async (productId: string, quantity = 1, variantName = "") => {
     if (!user) {
       navigate("/auth");
       return;
     }
-    const existing = items.find(i => i.product_id === productId);
+    const existing = items.find(i => i.product_id === productId && (i.variant_name || "") === (variantName || ""));
     if (existing) {
-      await updateQuantity(productId, existing.quantity + quantity);
+      await updateQuantity(productId, existing.quantity + quantity, variantName);
       return;
     }
-    await (supabase.from("cart_items") as any).insert({ user_id: user.id, product_id: productId, quantity });
+    await (supabase.from("cart_items") as any).insert({ 
+      user_id: user.id, 
+      product_id: productId, 
+      variant_name: variantName,
+      quantity 
+    });
     toast({ title: t('cart.item_added') });
     fetchCart();
   };
 
-  const updateQuantity = async (productId: string, quantity: number) => {
+  const updateQuantity = async (productId: string, quantity: number, variantName = "") => {
     if (!user) return;
-    if (quantity <= 0) { await removeFromCart(productId); return; }
-    await (supabase.from("cart_items") as any).update({ quantity }).eq("user_id", user.id).eq("product_id", productId);
+    if (quantity <= 0) { await removeFromCart(productId, variantName); return; }
+    await (supabase.from("cart_items") as any)
+      .update({ quantity })
+      .eq("user_id", user.id)
+      .eq("product_id", productId)
+      .eq("variant_name", variantName);
     fetchCart();
   };
 
-  const removeFromCart = async (productId: string) => {
+  const removeFromCart = async (productId: string, variantName = "") => {
     if (!user) return;
-    await supabase.from("cart_items").delete().eq("user_id", user.id).eq("product_id", productId);
+    await supabase.from("cart_items")
+      .delete()
+      .eq("user_id", user.id)
+      .eq("product_id", productId)
+      .eq("variant_name", variantName);
     toast({ title: t('cart.item_removed') });
     fetchCart();
   };
@@ -104,7 +129,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const cartCount = items.reduce((acc, i) => acc + i.quantity, 0);
-  const cartTotal = items.reduce((acc, i) => acc + i.quantity * Number(i.product?.price || 0), 0);
+  const cartTotal = items.reduce((acc, i) => acc + i.quantity * Number(i.price), 0);
 
   return (
     <CartContext.Provider value={{ items, cartCount, cartTotal, loading, addToCart, updateQuantity, removeFromCart, clearCart, refetch: fetchCart }}>
@@ -114,3 +139,4 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 };
 
 export const useCart = () => useContext(CartContext);
+

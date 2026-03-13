@@ -167,24 +167,10 @@ const Products = () => {
       {/* ── Product grid ── */}
       {!isSelectedComingSoon && !isLoading && products.length > 0 && (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:gap-6">
-          {Object.values((products as any[]).reduce((groups: Record<string, any>, product) => {
-            const baseName = product.name.replace(/\s*(?:-\s*)?[0-9.]+\s*(g|kg|ml|l|grams|kgs)$/i, "").trim();
-            if (!groups[baseName]) groups[baseName] = { baseName, variants: [] };
-            groups[baseName].variants.push({
-              id: product.id,
-              name: product.name,
-              slug: product.slug,
-              price: Number(product.price),
-              compareAtPrice: product.compare_at_price ? Number(product.compare_at_price) : null,
-              imageUrl: product.image_url || null,
-              unit: product.unit || null,
-            });
-            return groups;
-          }, {})).map((group: any, idx) => (
+          {(products as any[]).map((product) => (
             <ProductCard
-              key={idx}
-              baseName={group.baseName}
-              variants={group.variants}
+              key={product.id}
+              product={product}
             />
           ))}
         </div>

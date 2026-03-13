@@ -62,21 +62,28 @@ const Cart = () => {
               <div className="flex flex-1 flex-col justify-between">
                 <div>
                   <h3 className="font-display font-semibold">{item.product.name}</h3>
-                  <p className="text-sm text-muted-foreground">₹{Number(item.product.price)} / {item.product.unit}</p>
+                  <div className="flex items-center gap-2">
+                    {item.variant_name && (
+                      <span className="text-[10px] font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full border border-primary/20">
+                        {item.variant_name}
+                      </span>
+                    )}
+                    <p className="text-sm text-muted-foreground">₹{Number(item.price)}</p>
+                  </div>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 rounded-lg border border-border">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => updateQuantity(item.product_id, item.quantity - 1)}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => updateQuantity(item.product_id, item.quantity - 1, item.variant_name)}>
                       <Minus className="h-3 w-3" />
                     </Button>
                     <span className="w-6 text-center text-sm font-semibold">{item.quantity}</span>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => updateQuantity(item.product_id, item.quantity + 1)}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => updateQuantity(item.product_id, item.quantity + 1, item.variant_name)}>
                       <Plus className="h-3 w-3" />
                     </Button>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="font-bold text-primary">₹{item.quantity * Number(item.product.price)}</span>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeFromCart(item.product_id)}>
+                    <span className="font-bold text-primary">₹{item.quantity * Number(item.price)}</span>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeFromCart(item.product_id, item.variant_name)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
@@ -92,8 +99,8 @@ const Cart = () => {
           <div className="space-y-2 text-sm">
             {items.map(item => (
               <div key={item.id} className="flex justify-between">
-                <span className="text-muted-foreground">{item.product.name} × {item.quantity}</span>
-                <span>₹{item.quantity * Number(item.product.price)}</span>
+                <span className="text-muted-foreground">{item.product.name} {item.variant_name && `(${item.variant_name})`} × {item.quantity}</span>
+                <span>₹{item.quantity * Number(item.price)}</span>
               </div>
             ))}
             <div className="my-3 border-t border-border" />

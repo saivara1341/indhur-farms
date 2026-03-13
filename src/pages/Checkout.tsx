@@ -76,7 +76,8 @@ const Checkout = () => {
 
   // Calculate total weight from cart items
   const totalGrams = items.reduce((acc, item) => {
-    return acc + parseUnitToGrams(item.product.unit) * item.quantity;
+    const unitToParse = item.variant_name || item.product.unit || "";
+    return acc + parseUnitToGrams(unitToParse) * item.quantity;
   }, 0);
 
   const deliveryCharge = getDeliveryCharge(totalGrams, form.region);
@@ -150,7 +151,8 @@ const Checkout = () => {
         order_id: order.id,
         product_id: item.product_id,
         quantity: item.quantity,
-        price: Number(item.product.price),
+        price: Number(item.price),
+        variant_name: item.variant_name || null,
       }));
 
       const { error: itemsError } = await (supabase.from("order_items") as any).insert(orderItems);
@@ -543,9 +545,9 @@ const Checkout = () => {
             {items.map(item => (
               <div key={item.id} className="flex justify-between text-sm gap-2">
                 <span className="text-muted-foreground">
-                  {item.product.name} <span className="font-semibold text-foreground">× {item.quantity}</span>
+                  {item.product.name} {item.variant_name && `(${item.variant_name})`} <span className="font-semibold text-foreground">× {item.quantity}</span>
                 </span>
-                <span className="font-semibold">₹{item.quantity * Number(item.product.price)}</span>
+                <span className="font-semibold">₹{item.quantity * Number(item.price)}</span>
               </div>
             ))}
             <div className="border-t border-border pt-3 space-y-2">
