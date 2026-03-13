@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
-import { Package, ShoppingBag, ShoppingCart, Truck, Plus, Pencil, Trash2, CreditCard, Search, ExternalLink, ListTree, LayoutDashboard, Settings, ChevronRight, BarChart3, Users, Shield, ImagePlus, X, UploadCloud, Loader2, AlertTriangle, TrendingUp, Zap, Tag, TrendingDown, DollarSign, ClipboardList } from "lucide-react";
+import { Package, ShoppingBag, ShoppingCart, Truck, Plus, Pencil, Trash2, CreditCard, Search, ExternalLink, ListTree, LayoutDashboard, Settings, ChevronRight, BarChart3, Users, Shield, ImagePlus, X, UploadCloud, Loader2, AlertTriangle, TrendingUp, Zap, Tag, TrendingDown, DollarSign, ClipboardList, Star, MessageSquare, Check, Ban } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { seedSampleData } from "@/lib/seedData";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -125,6 +125,7 @@ const Admin = () => {
     { id: "orders", label: t('admin.orders'), icon: ShoppingBag, badge: (pendingCount || 0) > 0 ? pendingCount : null, badgeColor: "bg-red-500" },
     { id: "offers", label: "Offers & Discounts", icon: Tag },
     { id: "delivery", label: t('admin.logistics'), icon: Truck },
+    { id: "reviews", label: "User Reviews", icon: MessageSquare },
     { id: "records", label: t('admin.records'), icon: ClipboardList },
     { id: "settings", label: t('admin.settings'), icon: Settings },
   ];
@@ -220,9 +221,10 @@ const Admin = () => {
               {activeTab === "orders" && <OrdersTab />}
               {activeTab === "offers" && <OffersTab />}
               {activeTab === "delivery" && <DeliveryTab />}
+              {activeTab === "reviews" && <ReviewsTab />}
               {activeTab === "records" && <RecordsTab />}
               {activeTab === "settings" && <SettingsTab />}
-              {!["dashboard", "products", "categories", "orders", "offers", "delivery", "records", "settings"].includes(activeTab) && (
+              {!["dashboard", "products", "categories", "orders", "offers", "delivery", "reviews", "records", "settings"].includes(activeTab) && (
                 <div className="flex flex-col items-center justify-center py-20">
                   <p className="text-muted-foreground">{t('admin.tab_not_found')}: {activeTab}</p>
                   <Button variant="link" onClick={() => setSearchParams({ tab: "dashboard" })}>{t('admin.return_to_dashboard')}</Button>
@@ -2050,6 +2052,204 @@ CREATE POLICY "Admins manage records" ON admin_records FOR ALL USING (true);`}</
         <div className="rounded-2xl border-2 border-dashed border-muted p-12 text-center bg-muted/5">
           <ClipboardList className="mx-auto mb-4 h-12 w-12 text-muted-foreground/30" />
           <h3 className="text-xl font-bold">{t('admin.records_empty')}</h3>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ─── Reviews Tab ───
+const ReviewsTab = () => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    user_name: "",
+    rating: "5",
+    comment: "",
+    source: "web" as "web" | "instagram" | "whatsapp",
+    is_approved: true
+  });
+
+  const { data: reviews, isLoading } = useQuery({
+    queryKey: ["admin-reviews"],
+    queryFn: async () => {
+      const { data } = await supabase.from("reviews").select("*").order("created_at", { ascending: false });
+      return (data || []) as any[];
+    },
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.user_name || !form.comment) {
+      toast({ title: "Please fill all required fields", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
+    try {
+      const { error } = await supabase.from("reviews").insert([
+        { ...form, rating: parseInt(form.rating) }
+      ]);
+      if (error) throw error;
+      toast({ title: "✅ Review added successfully" });
+      setForm({ user_name: "", rating: "5", comment: "", source: "web", is_approved: true });
+      setShowForm(false);
+      queryClient.invalidateQueries({ queryKey: ["admin-reviews"] });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteReview = async (id: string) => {
+    if (!confirm("Delete this review?")) return;
+    const { error } = await supabase.from("reviews").delete().eq("id", id);
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    toast({ title: "Review deleted" });
+    queryClient.invalidateQueries({ queryKey: ["admin-reviews"] });
+  };
+
+  const toggleApproval = async (id: string, current: boolean) => {
+    await supabase.from("reviews").update({ is_approved: !current }).eq("id", id);
+    queryClient.invalidateQueries({ queryKey: ["admin-reviews"] });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="font-display text-2xl font-bold">User Reviews</h2>
+          <p className="text-sm text-muted-foreground">Manage customer feedback and add manual reviews from social media.</p>
+        </div>
+        <Button onClick={() => setShowForm(!showForm)} className="gap-2">
+          <Plus className="h-4 w-4" /> Add Manual Review
+        </Button>
+      </div>
+
+      {showForm && (
+        <Card className="shadow-md">
+          <CardHeader>
+            <CardTitle>Add Manual Review</CardTitle>
+            <CardDescription>Enter reviews manually from Instagram, WhatsApp, or other sources.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Customer Name *</Label>
+                  <Input required value={form.user_name} onChange={e => setForm(f => ({ ...f, user_name: e.target.value }))} placeholder="e.g. Rahul Sharma" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Source</Label>
+                  <Select value={form.source} onValueChange={(v: any) => setForm(f => ({ ...f, source: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="web">🌐 Website</SelectItem>
+                      <SelectItem value="instagram">📸 Instagram</SelectItem>
+                      <SelectItem value="whatsapp">💬 WhatsApp</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Rating (1-5)</Label>
+                  <Select value={form.rating} onValueChange={v => setForm(f => ({ ...f, rating: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {[5, 4, 3, 2, 1].map(n => (
+                        <SelectItem key={n} value={String(n)}>{n} Stars</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-end pb-2">
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input type="checkbox" checked={form.is_approved} onChange={e => setForm(f => ({ ...f, is_approved: e.target.checked }))} className="rounded" />
+                    Approve immediately
+                  </label>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Review Content *</Label>
+                <Textarea required rows={3} value={form.comment} onChange={e => setForm(f => ({ ...f, comment: e.target.value }))} placeholder="Paste the review content here..." />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" type="button" onClick={() => setShowForm(false)}>Cancel</Button>
+                <Button type="submit" disabled={saving}>{saving ? "Saving..." : "Add Review"}</Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
+      {isLoading ? (
+        <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+      ) : reviews && reviews.length > 0 ? (
+        <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50">
+                <TableHead>Customer</TableHead>
+                <TableHead>Source</TableHead>
+                <TableHead>Rating</TableHead>
+                <TableHead>Comment</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {reviews.map((r: any) => (
+                <TableRow key={r.id} className="hover:bg-muted/30">
+                  <TableCell>
+                    <div className="font-bold">{r.user_name}</div>
+                    <div className="text-[10px] text-muted-foreground uppercase">{new Date(r.created_at).toLocaleDateString()}</div>
+                  </TableCell>
+                  <TableCell>
+                    <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-tighter ${
+                      r.source === 'instagram' ? 'bg-pink-100 text-pink-700' :
+                      r.source === 'whatsapp' ? 'bg-green-100 text-green-700' :
+                      'bg-blue-100 text-blue-700'
+                    }`}>
+                      {r.source}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-0.5">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} className={`h-3 w-3 ${i < r.rating ? "fill-primary text-primary" : "text-muted"}`} />
+                      ))}
+                    </div>
+                  </TableCell>
+                  <TableCell className="max-w-xs">
+                    <p className="text-xs line-clamp-2 italic text-muted-foreground">"{r.comment}"</p>
+                  </TableCell>
+                  <TableCell>
+                    <button
+                      onClick={() => toggleApproval(r.id, r.is_approved)}
+                      className={`flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold uppercase transition-all ${
+                        r.is_approved ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20" : "bg-amber-500/10 text-amber-600 border border-amber-500/20"
+                      }`}
+                    >
+                      {r.is_approved ? <Check className="h-3 w-3" /> : <Ban className="h-3 w-3" />}
+                      {r.is_approved ? "Approved" : "Pending"}
+                    </button>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="icon" className="text-destructive/70 hover:text-destructive" onClick={() => deleteReview(r.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      ) : (
+        <div className="rounded-2xl border-2 border-dashed border-muted p-12 text-center bg-muted/5">
+          <MessageSquare className="mx-auto mb-4 h-12 w-12 text-muted-foreground/30" />
+          <h3 className="text-xl font-bold">No reviews found</h3>
+          <p className="text-muted-foreground text-sm mt-2">Start by adding a manual review or wait for customers to leave feedback.</p>
         </div>
       )}
     </div>

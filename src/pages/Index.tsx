@@ -10,6 +10,7 @@ import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { getTranslatedBaseName } from "@/lib/translations";
 import { useEffect, useRef, useCallback } from "react";
+import ReviewCarousel from "@/components/ReviewCarousel";
 
 const Index = () => {
   const { t } = useTranslation();
@@ -232,6 +233,9 @@ const Index = () => {
           </div>
         </section>
       )}
+
+      {/* Reviews */}
+      <ReviewCarousel />
 
       {/* Farm Preview */}
       <section className="py-20 bg-background overflow-hidden relative">

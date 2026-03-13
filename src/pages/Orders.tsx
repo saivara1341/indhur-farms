@@ -1,15 +1,19 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Package, Loader2, CheckCircle2, Clock, Truck, CheckCircle, ExternalLink, ShieldCheck } from "lucide-react";
+import { Package, Loader2, CheckCircle2, Clock, Truck, CheckCircle, ExternalLink, ShieldCheck, Star } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import ReviewDialog from "@/components/ReviewDialog";
+import { useState } from "react";
 
 const Orders = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const [reviewOrder, setReviewOrder] = useState<any>(null);
+  const queryClient = useQueryClient();
 
   const { data: orders, isLoading } = useQuery({
     queryKey: ["orders", user?.id],
@@ -19,7 +23,15 @@ const Orders = () => {
         .select("*, order_items(*, products(name, image_url)), delivery_receipts(*)")
         .eq("user_id", user!.id)
         .order("created_at", { ascending: false });
-      return data || [];
+      
+      // Also fetch user's reviews to see which orders are already reviewed
+      const { data: userReviews } = await (supabase.from("reviews" as any).select("order_id") as any).eq("user_id", user!.id);
+      const reviewedOrderIds = new Set(userReviews?.map(r => r.order_id));
+
+      return (data || []).map((order: any) => ({
+        ...order,
+        is_reviewed: reviewedOrderIds.has(order.id)
+      }));
     },
     enabled: !!user,
   });
@@ -140,6 +152,25 @@ const Orders = () => {
                 )}
               </div>
 
+              <div className="mt-4 flex flex-wrap gap-2">
+                {order.status === "delivered" && !order.is_reviewed && (
+                  <Button 
+                    size="sm" 
+                    className="gap-2 bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all rounded-full px-4"
+                    onClick={() => setReviewOrder(order)}
+                  >
+                    <Star className="h-4 w-4" />
+                    Leave a Review
+                  </Button>
+                )}
+                {order.is_reviewed && (
+                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 text-xs font-bold">
+                    <CheckCircle className="h-3 w-3" />
+                    Reviewed
+                  </div>
+                )}
+              </div>
+
               <p className="mt-2 text-xs text-muted-foreground">{new Date(order.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}</p>
             </div>
           ))}
@@ -153,6 +184,19 @@ const Orders = () => {
           <p className="mb-8 max-w-sm text-muted-foreground">{t('orders.start_shopping')}</p>
           <Link to="/products"><Button variant="hero" size="lg">{t('orders.shop_now')}</Button></Link>
         </div>
+      )}
+
+      {reviewOrder && (
+        <ReviewDialog
+          isOpen={!!reviewOrder}
+          onClose={() => setReviewOrder(null)}
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ["orders", user?.id] });
+          }}
+          orderId={reviewOrder.id}
+          userId={user.id}
+          userName={user.email?.split('@')[0] || "Customer"}
+        />
       )}
     </main>
   );
