@@ -1,4 +1,4 @@
-import { useState, useEffect, Component, ErrorInfo, ReactNode } from "react";
+import { useState, useEffect, useRef, Component, ErrorInfo, ReactNode } from "react";
 import i18n from "@/i18n";
 import { motion } from "framer-motion";
 import { useNavigate, useSearchParams } from "react-router-dom";
