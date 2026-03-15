@@ -374,11 +374,16 @@ const Checkout = () => {
                         )}>
                           {addr.label}
                         </span>
-                        {selectedAddressIdx === idx && (
-                          <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center text-white">
-                            <Check className="h-3 w-3" />
-                          </div>
-                        )}
+                        
+                        {/* Radio-style indicator */}
+                        <div className={cn(
+                          "h-5 w-5 rounded-full border-2 flex items-center justify-center transition-all duration-300",
+                          selectedAddressIdx === idx 
+                            ? "bg-primary border-primary text-white scale-110 shadow-sm" 
+                            : "bg-transparent border-muted-foreground/30 text-transparent"
+                        )}>
+                          <Check className="h-3 w-3" />
+                        </div>
                       </div>
                       <p className="text-xs font-bold truncate leading-tight">{addr.street}</p>
                       <p className="text-[10px] text-muted-foreground font-medium mt-1">
