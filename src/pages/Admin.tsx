@@ -14,9 +14,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
-import { Package, ShoppingBag, ShoppingCart, Truck, Plus, Pencil, Trash2, CreditCard, Search, ExternalLink, ListTree, LayoutDashboard, Settings, ChevronRight, ChevronDown, ChevronUp, BarChart3, Users, Shield, ImagePlus, X, UploadCloud, Loader2, AlertTriangle, TrendingUp, Zap, Tag, TrendingDown, DollarSign, ClipboardList, Star, MessageSquare, Check, Ban, Info, History, StickyNote, FileText, CheckCircle, Smartphone } from "lucide-react";
+import { Package, ShoppingBag, ShoppingCart, Truck, Plus, Pencil, Trash2, CreditCard, Search, ExternalLink, ListTree, LayoutDashboard, Settings, ChevronRight, ChevronDown, ChevronUp, BarChart3, Users, Shield, ImagePlus, X, UploadCloud, Loader2, AlertTriangle, TrendingUp, Zap, Tag, TrendingDown, DollarSign, ClipboardList, Star, MessageSquare, Check, Ban, Info, History, StickyNote, FileText, CheckCircle, Smartphone, Filter, ArrowUpDown } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from "@/components/ui/card";
 import { formatDistanceToNow } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
@@ -1656,7 +1657,7 @@ const CategoriesTab = ({ defaultOpen }: { defaultOpen?: boolean }) => {
             <TableHeader>
               <TableRow className="bg-muted/50">
                 <TableHead className="whitespace-nowrap">{t('admin.name') || "Name"}</TableHead>
-                <TableHead className="hidden sm:table-cell">{t('admin.slug') || "Slug"}</TableHead>
+                <TableHead className="hidden sm:table-cell">{t('admin.form.slug')}</TableHead>
                 <TableHead className="hidden sm:table-cell">{t('admin.description') || "Description"}</TableHead>
                 <TableHead className="text-right">{t('admin.actions') || "Actions"}</TableHead>
               </TableRow>
@@ -1783,7 +1784,20 @@ const RecordsTab = () => {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ title: "", type: "note", content: "" });
+  const [filterType, setFilterType] = useState("all");
+  const [sortBy, setSortBy] = useState("newest");
+  const [form, setForm] = useState({ 
+    title: "", 
+    type: "note", 
+    content: "",
+    customer_name: "",
+    total_amount: "",
+    items: "",
+    tracking_id: "",
+    courier_name: "",
+    delivery_status: "pending",
+    custom_type: ""
+  });
 
   const { data: records, isLoading } = useQuery({
     queryKey: ["admin-records"],
@@ -1795,16 +1809,47 @@ const RecordsTab = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.title || !form.content) {
-      toast({ title: "Please fill all required fields", variant: "destructive" });
+    if (!form.title) {
+      toast({ title: "Please enter a title", variant: "destructive" });
       return;
     }
+    
     setSaving(true);
     try {
-      const { error } = await (supabase.from("admin_records" as any).insert([form] as any) as any);
+      // Prepare metadata if it's an order or delivery
+      let finalContent = form.content;
+      if (form.type === 'order') {
+        finalContent = JSON.stringify({
+          customer: form.customer_name,
+          amount: form.total_amount,
+          items: form.items,
+          notes: form.content
+        });
+      } else if (form.type === 'delivery') {
+        finalContent = JSON.stringify({
+          tracking: form.tracking_id,
+          courier: form.courier_name,
+          status: form.delivery_status,
+          notes: form.content
+        });
+      }
+
+      const submission = {
+        title: form.title,
+        type: form.type === 'other' ? (form.custom_type || 'other') : form.type,
+        content: finalContent
+      };
+
+      const { error } = await (supabase.from("admin_records" as any).insert([submission] as any) as any);
       if (error) throw error;
+      
       toast({ title: "✅ Record added successfully" });
-      setForm({ title: "", type: "note", content: "" });
+      setForm({ 
+        title: "", type: "note", content: "", 
+        customer_name: "", total_amount: "", items: "",
+        tracking_id: "", courier_name: "", delivery_status: "pending",
+        custom_type: "" 
+      });
       setShowForm(false);
       queryClient.invalidateQueries({ queryKey: ["admin-records"] });
     } catch (err: any) {
@@ -1822,6 +1867,21 @@ const RecordsTab = () => {
     queryClient.invalidateQueries({ queryKey: ["admin-records"] });
   };
 
+  const getParsedContent = (record: any) => {
+    try {
+      if (record.content.startsWith('{')) {
+        return JSON.parse(record.content);
+      }
+    } catch (e) {}
+    return null;
+  };
+
+  const filteredRecords = records?.filter(r => filterType === 'all' || r.type === filterType)
+    .sort((a, b) => {
+      if (sortBy === 'newest') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    });
+
   const getIcon = (type: string) => {
     switch (type) {
       case 'order': return <ShoppingCart className="h-4 w-4 text-blue-500" />;
@@ -1838,6 +1898,8 @@ const RecordsTab = () => {
     }
   };
 
+  const availableTypes = Array.from(new Set(records?.map(r => r.type) || []));
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-card p-6 rounded-2xl border shadow-sm">
@@ -1847,10 +1909,46 @@ const RecordsTab = () => {
           </h2>
           <p className="text-sm text-muted-foreground mt-1">{t('admin.records_desc')}</p>
         </div>
-        <Button onClick={() => setShowForm(!showForm)} className="gap-2 shadow-lg shadow-primary/20 transition-all hover:scale-105 active:scale-95">
-          {showForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-          {showForm ? t('common.cancel') : t('admin.add_record')}
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => setShowForm(!showForm)} className="gap-2 shadow-lg shadow-primary/20 transition-all hover:scale-105 active:scale-95">
+            {showForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+            {showForm ? t('common.cancel') : t('admin.add_record')}
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 bg-card p-4 rounded-xl border border-dashed border-primary/20">
+        <div className="flex items-center gap-2">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('admin.filter_by')}:</span>
+        </div>
+        <Select value={filterType} onValueChange={setFilterType}>
+          <SelectTrigger className="w-[140px] h-8 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t('admin.all')}</SelectItem>
+            <SelectItem value="note">📝 {t('admin.notes')}</SelectItem>
+            <SelectItem value="order">📦 {t('admin.manual_order')}</SelectItem>
+            <SelectItem value="delivery">🚚 {t('admin.logistics')}</SelectItem>
+            {availableTypes.filter(t => !['note', 'order', 'delivery'].includes(t)).map(type => (
+              <SelectItem key={type} value={type}>{type}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <div className="flex items-center gap-2 ml-auto">
+          <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-[140px] h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">Newest First</SelectItem>
+              <SelectItem value="oldest">Oldest First</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {showForm && (
@@ -1858,8 +1956,8 @@ const RecordsTab = () => {
           <Card className="border-2 border-primary/20 shadow-xl overflow-hidden">
             <div className="h-1 bg-primary w-full" />
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Plus className="h-5 w-5" /> {t('admin.add_record')}
+              <CardTitle className="flex items-center gap-2 text-xl font-display">
+                <Plus className="h-5 w-5 text-primary" /> {t('admin.add_record')}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -1871,38 +1969,97 @@ const RecordsTab = () => {
                       required 
                       value={form.title} 
                       onChange={e => setForm(f => ({ ...f, title: e.target.value }))} 
-                      placeholder="e.g. Daily Transport Summary"
+                      placeholder="e.g. Bulk Order - Indhur Farms"
                       className="bg-muted/30 focus-visible:ring-primary"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label className="font-bold text-xs uppercase tracking-wider text-muted-foreground">{t('admin.record_type')}</Label>
                     <Select value={form.type} onValueChange={v => setForm(f => ({ ...f, type: v }))}>
-                      <SelectTrigger className="bg-muted/30"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="bg-muted/30 font-medium">
+                        <SelectValue />
+                      </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="note">📝 {t('admin.notes')}</SelectItem>
                         <SelectItem value="order">📦 {t('admin.manual_order')}</SelectItem>
                         <SelectItem value="delivery">🚚 {t('admin.logistics')}</SelectItem>
+                        <SelectItem value="other">➕ {t('admin.delivery.other_custom')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
+
+                {form.type === 'other' && (
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="space-y-2">
+                    <Label className="font-bold text-xs uppercase tracking-wider text-muted-foreground">{t('admin.record_custom_type')}</Label>
+                    <Input 
+                      required 
+                      value={form.custom_type} 
+                      onChange={e => setForm(f => ({ ...f, custom_type: e.target.value }))} 
+                      placeholder={t('admin.type_placeholder')}
+                      className="bg-primary/5 border-primary/20"
+                    />
+                  </motion.div>
+                )}
+
+                {form.type === 'order' && (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid gap-4 sm:grid-cols-2 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold text-blue-700">{t('admin.record_customer')}</Label>
+                      <Input value={form.customer_name} onChange={e => setForm(f => ({ ...f, customer_name: e.target.value }))} className="bg-white" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold text-blue-700">{t('admin.record_amount')}</Label>
+                      <Input type="number" value={form.total_amount} onChange={e => setForm(f => ({ ...f, total_amount: e.target.value }))} className="bg-white" />
+                    </div>
+                    <div className="sm:col-span-2 space-y-2">
+                      <Label className="text-xs font-bold text-blue-700">{t('admin.record_items')}</Label>
+                      <Textarea value={form.items} onChange={e => setForm(f => ({ ...f, items: e.target.value }))} className="bg-white h-20" />
+                    </div>
+                  </motion.div>
+                )}
+
+                {form.type === 'delivery' && (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid gap-4 sm:grid-cols-2 bg-green-50/50 p-4 rounded-xl border border-green-100">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold text-green-700">{t('admin.record_tracking')}</Label>
+                      <Input value={form.tracking_id} onChange={e => setForm(f => ({ ...f, tracking_id: e.target.value }))} className="bg-white" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold text-green-700">{t('admin.record_courier')}</Label>
+                      <Input value={form.courier_name} onChange={e => setForm(f => ({ ...f, courier_name: e.target.value }))} className="bg-white" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold text-green-700">{t('admin.record_delivery_status')}</Label>
+                      <Select value={form.delivery_status} onValueChange={v => setForm(f => ({ ...f, delivery_status: v }))}>
+                        <SelectTrigger className="bg-white"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">{t('admin.pipeline.pending')}</SelectItem>
+                          <SelectItem value="shipped">{t('admin.pipeline.shipped')}</SelectItem>
+                          <SelectItem value="delivered">{t('admin.pipeline.delivered')}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </motion.div>
+                )}
+
                 <div className="space-y-2">
-                  <Label className="font-bold text-xs uppercase tracking-wider text-muted-foreground">{t('admin.record_content')} *</Label>
+                  <Label className="font-bold text-xs uppercase tracking-wider text-muted-foreground">
+                    {form.type === 'note' ? t('admin.record_content') : t('admin.delivery.notes')}
+                  </Label>
                   <Textarea 
-                    required 
-                    rows={5} 
+                    rows={form.type === 'note' ? 5 : 3} 
                     value={form.content} 
                     onChange={e => setForm(f => ({ ...f, content: e.target.value }))} 
-                    placeholder="Enter details, order lists, or transport notes here..."
+                    placeholder="Enter additional details here..."
                     className="bg-muted/30 focus-visible:ring-primary resize-none"
                   />
                 </div>
                 <div className="flex justify-end gap-3 pt-2">
                   <Button variant="outline" type="button" onClick={() => setShowForm(false)}>{t('common.cancel')}</Button>
-                  <Button type="submit" disabled={saving} className="min-w-[120px]">
+                  <Button type="submit" disabled={saving} className="min-w-[120px] shadow-lg shadow-primary/20">
                     {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                    {saving ? "Saving..." : t('admin.add_record')}
+                    {saving ? t('admin.saving') : t('admin.add_record')}
                   </Button>
                 </div>
               </form>
@@ -1916,7 +2073,7 @@ const RecordsTab = () => {
           <Loader2 className="h-10 w-10 animate-spin text-primary/40" />
           <p className="text-sm text-muted-foreground animate-pulse">Loading Ledger...</p>
         </div>
-      ) : records?.length === 0 ? (
+      ) : filteredRecords?.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 bg-muted/20 rounded-3xl border border-dashed">
           <div className="h-16 w-16 bg-muted rounded-full flex items-center justify-center mb-4">
             <StickyNote className="h-8 w-8 text-muted-foreground" />
@@ -1926,48 +2083,104 @@ const RecordsTab = () => {
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
-          {records?.map((record: any) => (
-            <motion.div 
-              key={record.id} 
-              initial={{ opacity: 0, scale: 0.95 }} 
-              animate={{ opacity: 1, scale: 1 }}
-              whileHover={{ y: -4 }}
-              transition={{ duration: 0.2 }}
-            >
-              <Card className="h-full border-muted-foreground/10 hover:border-primary/30 transition-all hover:shadow-lg group">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="space-y-1 overflow-hidden">
-                      <div className="flex items-center gap-2">
-                        <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase", getBadgeColor(record.type))}>
-                          {getIcon(record.type)}
-                          {t(`admin.${record.type === 'note' ? 'notes' : record.type === 'order' ? 'manual_order' : 'logistics'}`)}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
-                          <History className="h-3 w-3" />
-                          {formatDistanceToNow(new Date(record.created_at), { addSuffix: true })}
-                        </span>
+          {filteredRecords?.map((record: any) => {
+            const data = getParsedContent(record);
+            return (
+              <motion.div 
+                key={record.id} 
+                initial={{ opacity: 0, scale: 0.95 }} 
+                animate={{ opacity: 1, scale: 1 }}
+                whileHover={{ y: -4 }}
+                transition={{ duration: 0.2 }}
+              >
+                <Card className="h-full border-muted-foreground/10 hover:border-primary/30 transition-all hover:shadow-lg group overflow-hidden">
+                  <div className={cn("h-1 w-full", 
+                    record.type === 'order' ? 'bg-blue-500' : 
+                    record.type === 'delivery' ? 'bg-green-500' : 'bg-amber-500'
+                  )} />
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="space-y-1 overflow-hidden">
+                        <div className="flex items-center gap-2">
+                          <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase", getBadgeColor(record.type))}>
+                            {getIcon(record.type)}
+                            {['note', 'order', 'delivery'].includes(record.type) ? 
+                              t(`admin.${record.type === 'note' ? 'notes' : record.type === 'order' ? 'manual_order' : 'logistics'}`) : 
+                              record.type
+                            }
+                          </span>
+                          <span className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
+                            <History className="h-3 w-3" />
+                            {formatDistanceToNow(new Date(record.created_at), { addSuffix: true })}
+                          </span>
+                        </div>
+                        <CardTitle className="text-lg leading-tight truncate group-hover:text-primary transition-colors">{record.title}</CardTitle>
                       </div>
-                      <CardTitle className="text-lg leading-tight truncate group-hover:text-primary transition-colors">{record.title}</CardTitle>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => deleteRecord(record.id)}
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => deleteRecord(record.id)}
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="pb-6">
-                  <div className="text-sm text-muted-foreground whitespace-pre-wrap line-clamp-6 bg-muted/20 p-4 rounded-xl border border-muted-foreground/5 italic leading-relaxed">
-                    {record.content}
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {data ? (
+                      <div className="space-y-3">
+                        {record.type === 'order' && (
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div className="bg-blue-50 p-2 rounded-lg border border-blue-100">
+                              <p className="text-blue-700 font-bold uppercase text-[9px] mb-1">{t('admin.record_customer')}</p>
+                              <p className="font-medium truncate">{data.customer || 'N/A'}</p>
+                            </div>
+                            <div className="bg-blue-50 p-2 rounded-lg border border-blue-100">
+                              <p className="text-blue-700 font-bold uppercase text-[9px] mb-1">{t('admin.record_amount')}</p>
+                              <p className="font-bold text-blue-800">₹{data.amount || '0'}</p>
+                            </div>
+                            {data.items && (
+                              <div className="col-span-2 bg-muted/30 p-2 rounded-lg border">
+                                <p className="text-muted-foreground font-bold uppercase text-[9px] mb-1">{t('admin.record_items')}</p>
+                                <p className="line-clamp-2 italic">{data.items}</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {record.type === 'delivery' && (
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div className="bg-green-50 p-2 rounded-lg border border-green-100">
+                              <p className="text-green-700 font-bold uppercase text-[9px] mb-1">{t('admin.record_tracking')}</p>
+                              <p className="font-mono truncate">{data.tracking || 'N/A'}</p>
+                            </div>
+                            <div className="bg-green-50 p-2 rounded-lg border border-green-100">
+                              <p className="text-green-700 font-bold uppercase text-[9px] mb-1">{t('admin.record_courier')}</p>
+                              <p className="font-medium truncate">{data.courier || 'N/A'}</p>
+                            </div>
+                            <div className="col-span-2 flex items-center justify-between bg-white p-2 rounded-lg border shadow-sm">
+                              <span className="text-[10px] font-bold text-muted-foreground uppercase">{t('admin.record_delivery_status')}</span>
+                              <Badge variant="outline" className="text-[10px] h-5 bg-green-500 text-white border-none">
+                                {data.status}
+                              </Badge>
+                            </div>
+                          </div>
+                        )}
+                        {data.notes && (
+                          <div className="text-sm text-muted-foreground whitespace-pre-wrap bg-muted/10 p-4 rounded-xl border border-muted-foreground/5 italic leading-relaxed">
+                            {data.notes}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-muted-foreground whitespace-pre-wrap line-clamp-6 bg-muted/20 p-4 rounded-xl border border-muted-foreground/5 italic leading-relaxed">
+                        {record.content}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            );
+          })}
         </div>
       )}
     </div>
