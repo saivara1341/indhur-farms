@@ -16,10 +16,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
-import { Package, ShoppingBag, ShoppingCart, Truck, Plus, Pencil, Trash2, CreditCard, Search, ExternalLink, ListTree, LayoutDashboard, Settings, ChevronRight, BarChart3, Users, Shield, ImagePlus, X, UploadCloud, Loader2, AlertTriangle, TrendingUp, Zap, Tag, TrendingDown, DollarSign, ClipboardList, Star, MessageSquare, Check, Ban } from "lucide-react";
+import { Package, ShoppingBag, ShoppingCart, Truck, Plus, Pencil, Trash2, CreditCard, Search, ExternalLink, ListTree, LayoutDashboard, Settings, ChevronRight, BarChart3, Users, Shield, ImagePlus, X, UploadCloud, Loader2, AlertTriangle, TrendingUp, Zap, Tag, TrendingDown, DollarSign, ClipboardList, Star, MessageSquare, Check, Ban, Info, History, StickyNote, FileText } from "lucide-react";
+import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from "@/components/ui/card";
+import { formatDistanceToNow } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { seedSampleData } from "@/lib/seedData";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useSettings } from "@/hooks/useSettings";
 import { getSmartFallback } from "@/lib/imageUtils";
@@ -123,7 +124,6 @@ const Admin = () => {
     { id: "products", label: t('admin.catalogue'), icon: Package, badge: (lowStockCount || 0) > 0 ? lowStockCount : null, badgeColor: "bg-orange-500" },
     { id: "categories", label: t('admin.categories'), icon: ListTree },
     { id: "orders", label: t('admin.orders'), icon: ShoppingBag, badge: (pendingCount || 0) > 0 ? pendingCount : null, badgeColor: "bg-red-500" },
-    { id: "offers", label: "Offers & Discounts", icon: Tag },
     { id: "delivery", label: t('admin.logistics'), icon: Truck },
     { id: "reviews", label: "User Reviews", icon: MessageSquare },
     { id: "records", label: t('admin.records'), icon: ClipboardList },
@@ -219,12 +219,11 @@ const Admin = () => {
               {activeTab === "products" && <ProductsTab defaultOpen={action === "new"} />}
               {activeTab === "categories" && <CategoriesTab defaultOpen={action === "new"} />}
               {activeTab === "orders" && <OrdersTab />}
-              {activeTab === "offers" && <OffersTab />}
               {activeTab === "delivery" && <DeliveryTab />}
               {activeTab === "reviews" && <ReviewsTab />}
               {activeTab === "records" && <RecordsTab />}
               {activeTab === "settings" && <SettingsTab />}
-              {!["dashboard", "products", "categories", "orders", "offers", "delivery", "reviews", "records", "settings"].includes(activeTab) && (
+              {!["dashboard", "products", "categories", "orders", "delivery", "reviews", "records", "settings"].includes(activeTab) && (
                 <div className="flex flex-col items-center justify-center py-20">
                   <p className="text-muted-foreground">{t('admin.tab_not_found')}: {activeTab}</p>
                   <Button variant="link" onClick={() => setSearchParams({ tab: "dashboard" })}>{t('admin.return_to_dashboard')}</Button>
@@ -1695,355 +1694,8 @@ const CategoryForm = ({ category, onClose, onSaved }: { category: any; onClose: 
   );
 };
 
-// ─── Offers Tab ───
-const OffersTab = () => {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [showForm, setShowForm] = useState(false);
-  const [editOffer, setEditOffer] = useState<any>(null);
-  const [saving, setSaving] = useState(false);
-  const [analyserProductId, setAnalyserProductId] = useState("");
-  const [analyserCostPrice, setAnalyserCostPrice] = useState("");
-  const [analyserDiscount, setAnalyserDiscount] = useState("");
-  const [analyserDiscountType, setAnalyserDiscountType] = useState<"percentage" | "fixed">("percentage");
+// Offers removed
 
-  const [form, setForm] = useState({
-    title: "",
-    product_id: "",   // empty means "all products"
-    discount_type: "percentage" as "percentage" | "fixed",
-    discount_value: "",
-    is_active: true,
-  });
-
-  const { data: products } = useQuery({
-    queryKey: ["admin-products-for-offers"],
-    queryFn: async () => {
-      const { data } = await supabase.from("products" as any).select("id, name, price, unit").eq("is_active", true).order("name");
-      return (data || []) as any[];
-    },
-  });
-
-  const { data: offers, isLoading } = useQuery({
-    queryKey: ["admin-offers"],
-    queryFn: async () => {
-      const { data } = await (supabase.from("product_offers" as any).select("*, products(name, price)") as any).order("created_at", { ascending: false });
-      return (data || []) as any[];
-    },
-  });
-
-  const resetForm = () => {
-    setForm({ title: "", product_id: "", discount_type: "percentage", discount_value: "", is_active: true });
-    setEditOffer(null);
-    setShowForm(false);
-  };
-
-  const openEdit = (offer: any) => {
-    setEditOffer(offer);
-    setForm({
-      title: offer.title,
-      product_id: offer.product_id || "",
-      discount_type: offer.discount_type,
-      discount_value: String(offer.discount_value),
-      is_active: offer.is_active,
-    });
-    setShowForm(true);
-  };
-
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.title || !form.discount_value) {
-      toast({ title: "Please fill all required fields", variant: "destructive" });
-      return;
-    }
-    setSaving(true);
-    const payload = {
-      title: form.title,
-      product_id: form.product_id || null,
-      discount_type: form.discount_type,
-      discount_value: parseFloat(form.discount_value),
-      is_active: form.is_active,
-    };
-    try {
-      if (editOffer) {
-        const { error } = await (supabase.from("product_offers" as any).update(payload as any) as any).eq("id", editOffer.id);
-        if (error) throw error;
-        toast({ title: "✅ Offer updated" });
-      } else {
-        const { error } = await (supabase.from("product_offers" as any).insert(payload as any) as any);
-        if (error) throw error;
-        toast({ title: "✅ Offer created" });
-      }
-      resetForm();
-      queryClient.invalidateQueries({ queryKey: ["admin-offers"] });
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const deleteOffer = async (id: string) => {
-    if (!confirm("Delete this offer?")) return;
-    const { error } = await (supabase.from("product_offers" as any).delete() as any).eq("id", id);
-    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
-    toast({ title: "Offer deleted" });
-    queryClient.invalidateQueries({ queryKey: ["admin-offers"] });
-  };
-
-  const toggleActive = async (id: string, current: boolean) => {
-    await (supabase.from("product_offers" as any).update({ is_active: !current } as any) as any).eq("id", id);
-    queryClient.invalidateQueries({ queryKey: ["admin-offers"] });
-  };
-
-  // ── Analyser calculation ──
-  const analyserProduct = products?.find((p: any) => p.id === analyserProductId);
-  const sellingPrice = analyserProduct ? Number(analyserProduct.price) : 0;
-  const costPrice = parseFloat(analyserCostPrice) || 0;
-  const discountVal = parseFloat(analyserDiscount) || 0;
-  const discountedPrice = analyserDiscountType === "percentage"
-    ? sellingPrice * (1 - discountVal / 100)
-    : sellingPrice - discountVal;
-  const profitPerUnit = discountedPrice - costPrice;
-  const profitMargin = discountedPrice > 0 ? (profitPerUnit / discountedPrice) * 100 : 0;
-  const isProfitable = profitPerUnit >= 0;
-
-  return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="font-display text-2xl font-bold">Offers &amp; Discounts</h2>
-          <p className="text-sm text-muted-foreground">Create discounts for specific products or all products.</p>
-        </div>
-        <Button onClick={() => { resetForm(); setShowForm(true); }} className="gap-2">
-          <Plus className="h-4 w-4" /> Add Offer
-        </Button>
-      </div>
-
-      {/* SQL setup notice */}
-      <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 p-4 text-sm">
-        <p className="font-bold text-amber-700 dark:text-amber-400 flex items-center gap-2"><AlertTriangle className="h-4 w-4" /> First-time setup required</p>
-        <p className="text-amber-600 dark:text-amber-500 mt-1 text-xs">If offers don't save, run this SQL once in your Supabase SQL editor:</p>
-        <pre className="mt-2 rounded bg-black/10 p-3 text-xs font-mono overflow-x-auto text-amber-800 dark:text-amber-300 whitespace-pre-wrap">{`CREATE TABLE IF NOT EXISTS product_offers (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  title TEXT NOT NULL,
-  product_id UUID REFERENCES products(id) ON DELETE CASCADE,
-  discount_type TEXT NOT NULL CHECK (discount_type IN ('percentage','fixed')),
-  discount_value NUMERIC NOT NULL,
-  is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-ALTER TABLE product_offers ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Admins manage offers" ON product_offers FOR ALL USING (true);`}</pre>
-      </div>
-
-      {/* Offer Form */}
-      {showForm && (
-        <div className="rounded-xl border border-border bg-card p-6 shadow-card space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-display text-lg font-semibold">{editOffer ? "Edit Offer" : "New Offer"}</h3>
-            <Button variant="ghost" size="sm" onClick={resetForm}>Cancel</Button>
-          </div>
-          <form onSubmit={handleSave} className="grid gap-4 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <Label>Offer Title *</Label>
-              <Input required value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Summer Sale 10% Off" />
-            </div>
-            <div>
-              <Label>Apply To</Label>
-              <Select value={form.product_id || "all"} onValueChange={v => setForm(f => ({ ...f, product_id: v === "all" ? "" : v }))}>
-                <SelectTrigger><SelectValue placeholder="Select product" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">🌿 All Products</SelectItem>
-                  {products?.map((p: any) => (
-                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Discount Type</Label>
-              <Select value={form.discount_type} onValueChange={(v: any) => setForm(f => ({ ...f, discount_type: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="percentage">Percentage (%)</SelectItem>
-                  <SelectItem value="fixed">Fixed Amount (₹)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Discount Value *</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground">
-                  {form.discount_type === "percentage" ? "%" : "₹"}
-                </span>
-                <Input required type="number" step="0.01" min="0" value={form.discount_value}
-                  onChange={e => setForm(f => ({ ...f, discount_value: e.target.value }))}
-                  className="pl-8" placeholder={form.discount_type === "percentage" ? "10" : "50"} />
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="checkbox" checked={form.is_active} onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} className="rounded" />
-                Active (visible to customers)
-              </label>
-            </div>
-            <div className="sm:col-span-2 flex justify-end">
-              <Button type="submit" disabled={saving}>{saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}{saving ? "Saving..." : editOffer ? "Update Offer" : "Create Offer"}</Button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* Offers List */}
-      {isLoading ? (
-        <div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-      ) : (offers as any[])?.length > 0 ? (
-        <div className="rounded-xl border border-border bg-card shadow-sm overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/50">
-                <TableHead>Offer</TableHead>
-                <TableHead>Applies To</TableHead>
-                <TableHead>Discount</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(offers as any[]).map((offer: any) => (
-                <TableRow key={offer.id} className="hover:bg-muted/30">
-                  <TableCell className="font-semibold">{offer.title}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {offer.products ? offer.products.name : <span className="text-primary font-medium">All Products</span>}
-                  </TableCell>
-                  <TableCell className="font-bold text-primary">
-                    {offer.discount_type === "percentage" ? `${offer.discount_value}%` : `₹${offer.discount_value}`} OFF
-                  </TableCell>
-                  <TableCell>
-                    <button
-                      onClick={() => toggleActive(offer.id, offer.is_active)}
-                      className={`rounded-full px-3 py-0.5 text-[10px] font-bold uppercase transition-colors ${offer.is_active ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20" : "bg-muted text-muted-foreground"
-                        }`}
-                    >
-                      {offer.is_active ? "Active" : "Inactive"}
-                    </button>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(offer)} className="hover:text-amber-600">
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="text-destructive/70 hover:text-destructive" onClick={() => deleteOffer(offer.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      ) : (
-        <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-muted p-12 text-center">
-          <div className="mb-4 rounded-full bg-primary/10 p-4"><Tag className="h-10 w-10 text-primary opacity-60" /></div>
-          <h3 className="mb-2 font-display text-xl font-bold">No offers yet</h3>
-          <p className="mb-6 text-muted-foreground text-sm">Create your first discount offer above.</p>
-        </div>
-      )}
-
-      {/* ── Profit / Loss Analyser ── */}
-      <div className="rounded-xl border border-border bg-card p-6 shadow-card">
-        <div className="flex items-center gap-2 mb-6">
-          <DollarSign className="h-5 w-5 text-primary" />
-          <h3 className="font-display text-lg font-semibold">Profit / Loss Analyser</h3>
-        </div>
-        <p className="text-xs text-muted-foreground mb-5">Enter your cost price and a planned discount to see whether the offer is profitable before activating it.</p>
-
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div>
-            <Label className="text-xs">Product</Label>
-            <Select value={analyserProductId} onValueChange={setAnalyserProductId}>
-              <SelectTrigger><SelectValue placeholder="Select product" /></SelectTrigger>
-              <SelectContent>
-                {products?.map((p: any) => (
-                  <SelectItem key={p.id} value={p.id}>{p.name} (₹{p.price})</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label className="text-xs">Your Cost Price (₹)</Label>
-            <Input type="number" min="0" step="0.01" value={analyserCostPrice}
-              onChange={e => setAnalyserCostPrice(e.target.value)} placeholder="e.g. 80" />
-          </div>
-          <div>
-            <Label className="text-xs">Planned Discount Type</Label>
-            <Select value={analyserDiscountType} onValueChange={(v: any) => setAnalyserDiscountType(v)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="percentage">Percentage (%)</SelectItem>
-                <SelectItem value="fixed">Fixed Amount (₹)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label className="text-xs">Discount Value</Label>
-            <Input type="number" min="0" step="0.01" value={analyserDiscount}
-              onChange={e => setAnalyserDiscount(e.target.value)} placeholder={analyserDiscountType === "percentage" ? "10" : "20"} />
-          </div>
-        </div>
-
-        {analyserProductId && costPrice > 0 && discountVal > 0 && (
-          <div className={`mt-6 rounded-xl p-5 border-2 ${isProfitable ? "border-emerald-300 bg-emerald-50 dark:bg-emerald-950/20" : "border-red-300 bg-red-50 dark:bg-red-950/20"}`}>
-            <div className="flex items-center gap-2 mb-4">
-              {isProfitable ? (
-                <TrendingUp className="h-5 w-5 text-emerald-600" />
-              ) : (
-                <TrendingDown className="h-5 w-5 text-red-600" />
-              )}
-              <h4 className={`font-bold text-sm ${isProfitable ? "text-emerald-700 dark:text-emerald-400" : "text-red-700 dark:text-red-400"}`}>
-                {isProfitable ? "✅ This offer is profitable" : "❌ This offer results in a loss"}
-              </h4>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div className="text-center p-3 rounded-lg bg-white/60 dark:bg-black/20">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Original Price</p>
-                <p className="text-xl font-black">₹{sellingPrice.toFixed(2)}</p>
-              </div>
-              <div className="text-center p-3 rounded-lg bg-white/60 dark:bg-black/20">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Discounted Price</p>
-                <p className="text-xl font-black text-primary">₹{Math.max(0, discountedPrice).toFixed(2)}</p>
-              </div>
-              <div className={`text-center p-3 rounded-lg ${isProfitable ? "bg-emerald-100 dark:bg-emerald-900/30" : "bg-red-100 dark:bg-red-900/30"}`}>
-                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Profit / Unit</p>
-                <p className={`text-xl font-black ${isProfitable ? "text-emerald-700" : "text-red-600"}`}>
-                  {isProfitable ? "+" : ""}₹{profitPerUnit.toFixed(2)}
-                </p>
-              </div>
-              <div className={`text-center p-3 rounded-lg ${isProfitable ? "bg-emerald-100 dark:bg-emerald-900/30" : "bg-red-100 dark:bg-red-900/30"}`}>
-                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Margin</p>
-                <p className={`text-xl font-black ${isProfitable ? "text-emerald-700" : "text-red-600"}`}>
-                  {profitMargin.toFixed(1)}%
-                </p>
-              </div>
-            </div>
-            {!isProfitable && (
-              <p className="mt-4 text-xs font-semibold text-red-600 dark:text-red-400 text-center">
-                ⚠️ You are selling below your cost price. Reduce the discount or increase the selling price.
-              </p>
-            )}
-          </div>
-        )}
-        {analyserProductId && costPrice === 0 && (
-          <p className="mt-4 text-xs text-muted-foreground text-center">Enter your cost price to see the analysis.</p>
-        )}
-      </div>
-    </div>
-  );
-};
-
-// ─── Records Tab ───
 const RecordsTab = () => {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -2089,111 +1741,152 @@ const RecordsTab = () => {
     queryClient.invalidateQueries({ queryKey: ["admin-records"] });
   };
 
+  const getIcon = (type: string) => {
+    switch (type) {
+      case 'order': return <ShoppingCart className="h-4 w-4 text-blue-500" />;
+      case 'delivery': return <Truck className="h-4 w-4 text-green-500" />;
+      default: return <StickyNote className="h-4 w-4 text-amber-500" />;
+    }
+  };
+
+  const getBadgeColor = (type: string) => {
+    switch (type) {
+      case 'order': return 'bg-blue-50 text-blue-600 border-blue-200';
+      case 'delivery': return 'bg-green-50 text-green-600 border-green-200';
+      default: return 'bg-amber-50 text-amber-600 border-amber-200';
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-card p-6 rounded-2xl border shadow-sm">
         <div>
-          <h2 className="font-display text-2xl font-bold">{t('admin.records_title')}</h2>
-          <p className="text-sm text-muted-foreground">{t('admin.records_desc')}</p>
+          <h2 className="font-display text-2xl font-bold flex items-center gap-2">
+            <ClipboardList className="h-6 w-6 text-primary" /> {t('admin.records_title')}
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1">{t('admin.records_desc')}</p>
         </div>
-        <Button onClick={() => setShowForm(!showForm)} className="gap-2">
-          <Plus className="h-4 w-4" /> {t('admin.add_record')}
+        <Button onClick={() => setShowForm(!showForm)} className="gap-2 shadow-lg shadow-primary/20 transition-all hover:scale-105 active:scale-95">
+          {showForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+          {showForm ? t('common.cancel') : t('admin.add_record')}
         </Button>
       </div>
 
-      {/* SQL Setup Notice */}
-      <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm">
-        <p className="font-bold text-primary flex items-center gap-2"><Info className="h-4 w-4" /> First-time Setup</p>
-        <p className="text-muted-foreground mt-1 text-xs">If records don't save, run this SQL in your Supabase SQL editor:</p>
-        <pre className="mt-2 rounded bg-black/5 p-3 text-[10px] font-mono overflow-x-auto whitespace-pre-wrap">{`CREATE TABLE IF NOT EXISTS admin_records (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  title TEXT NOT NULL,
-  type TEXT NOT NULL CHECK (type IN ('order', 'note', 'delivery')),
-  content TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-ALTER TABLE admin_records ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Admins manage records" ON admin_records FOR ALL USING (true);`}</pre>
-      </div>
-
       {showForm && (
-        <Card className="shadow-md">
-          <CardHeader>
-            <CardTitle>{t('admin.add_record')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>{t('admin.record_title')} *</Label>
-                  <Input required value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Morning Logistics Log" />
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
+          <Card className="border-2 border-primary/20 shadow-xl overflow-hidden">
+            <div className="h-1 bg-primary w-full" />
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Plus className="h-5 w-5" /> {t('admin.add_record')}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid gap-6 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label className="font-bold text-xs uppercase tracking-wider text-muted-foreground">{t('admin.record_title')} *</Label>
+                    <Input 
+                      required 
+                      value={form.title} 
+                      onChange={e => setForm(f => ({ ...f, title: e.target.value }))} 
+                      placeholder="e.g. Daily Transport Summary"
+                      className="bg-muted/30 focus-visible:ring-primary"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="font-bold text-xs uppercase tracking-wider text-muted-foreground">{t('admin.record_type')}</Label>
+                    <Select value={form.type} onValueChange={v => setForm(f => ({ ...f, type: v }))}>
+                      <SelectTrigger className="bg-muted/30"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="note">📝 {t('admin.notes')}</SelectItem>
+                        <SelectItem value="order">📦 {t('admin.manual_order')}</SelectItem>
+                        <SelectItem value="delivery">🚚 {t('admin.logistics')}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>{t('admin.record_type')}</Label>
-                  <Select value={form.type} onValueChange={v => setForm(f => ({ ...f, type: v }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="note">📝 {t('admin.notes')}</SelectItem>
-                      <SelectItem value="order">📦 {t('admin.manual_order')}</SelectItem>
-                      <SelectItem value="delivery">🚚 {t('admin.logistics')}</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label className="font-bold text-xs uppercase tracking-wider text-muted-foreground">{t('admin.record_content')} *</Label>
+                  <Textarea 
+                    required 
+                    rows={5} 
+                    value={form.content} 
+                    onChange={e => setForm(f => ({ ...f, content: e.target.value }))} 
+                    placeholder="Enter details, order lists, or transport notes here..."
+                    className="bg-muted/30 focus-visible:ring-primary resize-none"
+                  />
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label>{t('admin.record_content')} *</Label>
-                <Textarea required rows={4} value={form.content} onChange={e => setForm(f => ({ ...f, content: e.target.value }))} placeholder="Enter manual order details or transport notes..." />
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button variant="ghost" type="button" onClick={() => setShowForm(false)}>Cancel</Button>
-                <Button type="submit" disabled={saving}>{saving ? "Saving..." : t('admin.add_record')}</Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+                <div className="flex justify-end gap-3 pt-2">
+                  <Button variant="outline" type="button" onClick={() => setShowForm(false)}>{t('common.cancel')}</Button>
+                  <Button type="submit" disabled={saving} className="min-w-[120px]">
+                    {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                    {saving ? "Saving..." : t('admin.add_record')}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </motion.div>
       )}
 
       {isLoading ? (
-        <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-      ) : records && records.length > 0 ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {records.map((r: any) => (
-            <Card key={r.id} className="group relative overflow-hidden transition-all hover:shadow-md">
-              <div className={`absolute left-0 top-0 h-1 w-full ${
-                r.type === 'order' ? 'bg-blue-500' : r.type === 'delivery' ? 'bg-orange-500' : 'bg-primary'
-              }`} />
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-base font-bold">{r.title}</CardTitle>
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                      {new Date(r.created_at).toLocaleDateString()} at {new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </div>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive/50 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => deleteRecord(r.id)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm whitespace-pre-wrap text-muted-foreground line-clamp-6">{r.content}</p>
-                <div className="mt-4 flex items-center gap-2">
-                   <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
-                     r.type === 'order' ? 'bg-blue-100 text-blue-700' :
-                     r.type === 'delivery' ? 'bg-orange-100 text-orange-700' :
-                     'bg-primary/10 text-primary'
-                   }`}>
-                     {r.type}
-                   </span>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="flex flex-col items-center justify-center py-20 gap-4">
+          <Loader2 className="h-10 w-10 animate-spin text-primary/40" />
+          <p className="text-sm text-muted-foreground animate-pulse">Loading Ledger...</p>
+        </div>
+      ) : records?.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 bg-muted/20 rounded-3xl border border-dashed">
+          <div className="h-16 w-16 bg-muted rounded-full flex items-center justify-center mb-4">
+            <StickyNote className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <p className="text-lg font-medium text-muted-foreground">{t('admin.records_empty')}</p>
+          <Button variant="link" onClick={() => setShowForm(true)} className="mt-2">{t('admin.add_record')}</Button>
         </div>
       ) : (
-        <div className="rounded-2xl border-2 border-dashed border-muted p-12 text-center bg-muted/5">
-          <ClipboardList className="mx-auto mb-4 h-12 w-12 text-muted-foreground/30" />
-          <h3 className="text-xl font-bold">{t('admin.records_empty')}</h3>
+        <div className="grid gap-4 md:grid-cols-2">
+          {records?.map((record: any) => (
+            <motion.div 
+              key={record.id} 
+              initial={{ opacity: 0, scale: 0.95 }} 
+              animate={{ opacity: 1, scale: 1 }}
+              whileHover={{ y: -4 }}
+              transition={{ duration: 0.2 }}
+            >
+              <Card className="h-full border-muted-foreground/10 hover:border-primary/30 transition-all hover:shadow-lg group">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="space-y-1 overflow-hidden">
+                      <div className="flex items-center gap-2">
+                        <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase", getBadgeColor(record.type))}>
+                          {getIcon(record.type)}
+                          {t(`admin.${record.type === 'note' ? 'notes' : record.type === 'order' ? 'manual_order' : 'logistics'}`)}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
+                          <History className="h-3 w-3" />
+                          {formatDistanceToNow(new Date(record.created_at), { addSuffix: true })}
+                        </span>
+                      </div>
+                      <CardTitle className="text-lg leading-tight truncate group-hover:text-primary transition-colors">{record.title}</CardTitle>
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => deleteRecord(record.id)}
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="pb-6">
+                  <div className="text-sm text-muted-foreground whitespace-pre-wrap line-clamp-6 bg-muted/20 p-4 rounded-xl border border-muted-foreground/5 italic leading-relaxed">
+                    {record.content}
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
         </div>
       )}
     </div>
