@@ -106,7 +106,7 @@ const Index = () => {
           >
             {(() => {
               const tagline = t("hero.tagline");
-              const parts = tagline.split(".... ");
+              const parts = tagline.split(". 📦");
               return (
                 <motion.span
                   initial={{ opacity: 0, y: 10 }}
@@ -118,7 +118,7 @@ const Index = () => {
                   <span className="opacity-90">{parts[0]}</span>
                   {parts[1] && (
                     <span className="whitespace-nowrap text-secondary font-black bg-white/10 px-2.5 py-0.5 rounded-full border border-white/10">
-                      .... {parts[1]}
+                      📦 {parts[1]}
                     </span>
                   )}
                 </motion.span>
