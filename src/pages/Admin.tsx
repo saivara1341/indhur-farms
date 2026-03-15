@@ -858,15 +858,43 @@ const ProductForm = ({ product, categories, onClose, onSaved }: { product: any; 
                 size="sm"
                 onClick={() => {
                   const basePrice = Number(form.price);
-                  const standardWeights = [
-                    { unit: "250g", price: basePrice },
-                    { unit: "500g", price: basePrice * 2 },
-                    { unit: "1kg", price: basePrice * 4 },
-                    { unit: "2kg", price: basePrice * 8 },
-                    { unit: "3kg", price: basePrice * 12 },
-                    { unit: "4kg", price: basePrice * 16 },
-                    { unit: "5kg", price: basePrice * 20 }
-                  ];
+                  const isPowder = form.name.toLowerCase().includes("powder");
+                  const isFingers = form.name.toLowerCase().includes("fingers") || form.name.toLowerCase().includes("కొమ్ములు");
+                  
+                  let standardWeights;
+                  
+                  if (isFingers) {
+                    standardWeights = [
+                      { unit: "250g", price: 80 },
+                      { unit: "500g", price: 140 },
+                      { unit: "1kg", price: 270 },
+                      { unit: "2kg", price: 510 },
+                      { unit: "3kg", price: 775 },
+                      { unit: "4kg", price: 999 },
+                      { unit: "5kg", price: 1250 }
+                    ];
+                  } else if (isPowder) {
+                    standardWeights = [
+                      { unit: "250g", price: 100 },
+                      { unit: "500g", price: 150 },
+                      { unit: "1kg", price: 290 },
+                      { unit: "2kg", price: 550 },
+                      { unit: "3kg", price: 825 },
+                      { unit: "4kg", price: 1095 },
+                      { unit: "5kg", price: 1350 }
+                    ];
+                  } else {
+                    standardWeights = [
+                      { unit: "250g", price: basePrice },
+                      { unit: "500g", price: basePrice * 2 },
+                      { unit: "1kg", price: basePrice * 4 },
+                      { unit: "2kg", price: basePrice * 8 },
+                      { unit: "3kg", price: basePrice * 12 },
+                      { unit: "4kg", price: basePrice * 16 },
+                      { unit: "5kg", price: basePrice * 20 }
+                    ];
+                  }
+
                   setForm(f => ({
                     ...f,
                     variants: [
@@ -933,7 +961,6 @@ const ProductForm = ({ product, categories, onClose, onSaved }: { product: any; 
                 <div className="col-span-4">
                   <Label className="text-[10px]">Stock</Label>
                   <Input
-                    required
                     type="number"
                     value={v.stock}
                     onChange={e => {
