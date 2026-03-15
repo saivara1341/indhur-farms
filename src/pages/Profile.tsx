@@ -19,6 +19,14 @@ import { useToast } from "@/hooks/use-toast";
 import Invoice from "@/components/Invoice";
 import { cn } from "@/lib/utils";
 import { getSmartFallback } from "@/lib/imageUtils";
+import { INDIA_STATES } from "@/lib/indiaStates";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const Profile = () => {
   const { user, loading: authLoading, signOut } = useAuth();
@@ -45,8 +53,10 @@ const Profile = () => {
     label: "Home",
     street: "",
     city: "",
-    state: "",
-    zip: ""
+    state: "Andhra Pradesh",
+    otherState: "",
+    zip: "",
+    country: "India"
   });
 
   useEffect(() => {
@@ -136,7 +146,7 @@ const Profile = () => {
 
     setForm(f => ({ ...f, addresses: newAddresses }));
     setShowAddressDialog(false);
-    setAddressForm({ label: "Home", street: "", city: "", state: "", zip: "" });
+    setAddressForm({ label: "Home", street: "", city: "", state: "Andhra Pradesh", otherState: "", zip: "", country: "India" });
     setEditingAddressIdx(null);
   };
 
@@ -312,7 +322,7 @@ const Profile = () => {
                     size="sm" 
                     onClick={() => {
                       setEditingAddressIdx(null);
-                      setAddressForm({ label: "Home", street: "", city: "", state: "", zip: "" });
+                      setAddressForm({ label: "Home", street: "", city: "", state: "Andhra Pradesh", otherState: "", zip: "", country: "India" });
                       setShowAddressDialog(true);
                     }}
                     className="gap-2"
@@ -334,7 +344,15 @@ const Profile = () => {
                               <button 
                                 onClick={() => {
                                   setEditingAddressIdx(idx);
-                                  setAddressForm(addr);
+                                  setAddressForm({
+                                    label: addr.label || "Home",
+                                    street: addr.street || "",
+                                    city: addr.city || "",
+                                    state: addr.state || "Andhra Pradesh",
+                                    otherState: addr.otherState || "",
+                                    zip: addr.zip || "",
+                                    country: addr.country || "India"
+                                  });
                                   setShowAddressDialog(true);
                                 }}
                                 className="h-7 w-7 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground"
@@ -351,7 +369,8 @@ const Profile = () => {
                           </div>
                           <p className="text-sm font-medium leading-relaxed">
                             {addr.street}<br />
-                            {addr.city}, {addr.state} - {addr.zip}
+                            {addr.city}, {addr.state === "Other" ? addr.otherState : addr.state} - {addr.zip}<br />
+                            {addr.country}
                           </p>
                         </div>
                       </div>
@@ -473,8 +492,44 @@ const Profile = () => {
               </div>
               <div className="space-y-2">
                 <Label>State</Label>
-                <Input value={addressForm.state} onChange={e => setAddressForm(a => ({ ...a, state: e.target.value }))} className="rounded-xl" />
+                <Select 
+                  value={addressForm.state} 
+                  onValueChange={(val) => setAddressForm(a => ({ 
+                    ...a, 
+                    state: val, 
+                    country: val === "Other" ? a.country : "India" 
+                  }))}
+                >
+                  <SelectTrigger className="rounded-xl">
+                    <SelectValue placeholder="Select state" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[280px]">
+                    {INDIA_STATES.map(s => (
+                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
+              {addressForm.state === "Other" && (
+                <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <Label>Enter State Name</Label>
+                  <Input 
+                    value={addressForm.otherState} 
+                    onChange={e => setAddressForm(a => ({ ...a, otherState: e.target.value }))} 
+                    className="rounded-xl" 
+                    placeholder="Enter state name"
+                  />
+                </div>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label>Country</Label>
+              <Input 
+                value={addressForm.country} 
+                onChange={e => setAddressForm(a => ({ ...a, country: e.target.value }))} 
+                className="rounded-xl" 
+                placeholder="Enter country"
+              />
             </div>
             <div className="space-y-2">
               <Label>ZIP / Postcode</Label>

@@ -17,6 +17,14 @@ import {
 import { useProfile } from "@/hooks/useProfile";
 import { QRCodeCanvas } from "qrcode.react";
 import { cn } from "@/lib/utils";
+import { INDIA_STATES } from "@/lib/indiaStates";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // ── Delivery charge table ─────────────────────────────────────
 const DELIVERY_TIERS: { maxGrams: number; hyd: number; apTs: number }[] = [
@@ -47,8 +55,22 @@ const parseUnitToGrams = (unit: string | null): number => {
   return 1000;
 };
 
-const getDeliveryCharge = (totalGrams: number, region: string): number => {
-  if (!region) return 0;
+const getDeliveryCharge = (totalGrams: number, state: string, district: string): number => {
+  if (!state) return 0;
+  
+  const lowerState = state.toLowerCase();
+  const lowerDistrict = (district || "").toLowerCase().trim();
+  
+  // Detect Region
+  let region = "ap-ts"; // Default to regional/domestic
+  
+  const isAPorTS = lowerState.includes("andhra") || lowerState.includes("telangana");
+  const isHyderabadLocal = ["hyderabad", "rangareddy", "vicarabad", "medchal", "malkajgiri"].some(d => lowerDistrict.includes(d));
+  
+  if (isAPorTS && isHyderabadLocal) {
+    region = "hyderabad";
+  }
+
   for (const tier of DELIVERY_TIERS) {
     if (totalGrams <= tier.maxGrams) {
       return region === "hyderabad" ? tier.hyd : tier.apTs;
@@ -76,7 +98,8 @@ const Checkout = () => {
     mandal: "", 
     district: "", 
     pincode: "",
-    state: "Andhra Pradesh / Telangana",
+    state: "Andhra Pradesh",
+    otherState: "",
     country: "India",
     notes: "", 
     region: "" 
@@ -89,17 +112,17 @@ const Checkout = () => {
 
   const handleSelectAddress = (addr: any, idx: number) => {
     setSelectedAddressIdx(idx);
-    const region = ["hyderabad", "rangareddy", "vicarabad", "medchal", "malkajgiri"].some(d => addr.city.toLowerCase().includes(d) || addr.street.toLowerCase().includes(d)) ? "hyderabad" : "ap-ts";
     
     setForm({
       ...form,
-      houseNo: addr.street.split(',')[0] || addr.street,
-      streetName: addr.street.split(',').slice(1).join(',').trim() || addr.street,
-      mandal: addr.city,
-      district: addr.city,
-      pincode: addr.zip,
-      state: addr.state,
-      region: region
+      houseNo: addr.street?.split(',')[0] || addr.street || "",
+      streetName: addr.street?.split(',').slice(1).join(',').trim() || addr.street || "",
+      mandal: addr.city || "",
+      district: addr.city || "",
+      pincode: addr.zip || "",
+      state: addr.state || "Andhra Pradesh",
+      otherState: addr.otherState || "",
+      country: addr.country || "India",
     });
     
     toast({ title: `Selected "${addr.label}" address` });
@@ -110,7 +133,7 @@ const Checkout = () => {
     return acc + parseUnitToGrams(unitToParse) * item.quantity;
   }, 0);
 
-  const deliveryCharge = getDeliveryCharge(totalGrams, form.region);
+  const deliveryCharge = getDeliveryCharge(totalGrams, form.state === "Other" ? form.otherState : form.state, form.district);
   const total = cartTotal + deliveryCharge;
 
   const upiId = "6303602743@upi";
@@ -159,7 +182,7 @@ const Checkout = () => {
     const orderPayload = {
       user_id: freshUser.id,
       total,
-      shipping_address: `${form.name}\n${form.houseNo}, ${form.streetName}\n${form.mandal}, ${form.district}\n${form.state}, ${form.country}\nPIN: ${form.pincode}`,
+      shipping_address: `${form.name}\n${form.houseNo}, ${form.streetName}\n${form.mandal}, ${form.district}\n${form.state === "Other" ? form.otherState : form.state}, ${form.country}\nPIN: ${form.pincode}`,
       phone: fullPhone,
       notes: form.notes,
       status: "pending",
@@ -353,19 +376,9 @@ const Checkout = () => {
                   <Label htmlFor="district">District *</Label>
                   <Input id="district" required value={form.district} onChange={e => {
                     const v = e.target.value;
-                    const lowerV = v.toLowerCase().trim();
-                    let detectedRegion = "ap-ts";
-                    
-                    if (["hyderabad", "rangareddy", "vicarabad", "medchal", "malkajgiri"].some(d => lowerV.includes(d))) {
-                      detectedRegion = "hyderabad";
-                    }
-                    
                     setForm(f => ({ 
                       ...f, 
-                      district: v, 
-                      region: v ? detectedRegion : "",
-                      state: v ? f.state || "Andhra Pradesh / Telangana" : f.state, 
-                      country: v ? "India" : f.country 
+                      district: v
                     }));
                   }} />
                 </div>
@@ -375,22 +388,46 @@ const Checkout = () => {
                 </div>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <Label htmlFor="state">State</Label>
-                  <Input id="state" value={form.state} onChange={e => setForm(f => ({ ...f, state: e.target.value }))} />
+                <div className="space-y-2">
+                  <Label htmlFor="state">State *</Label>
+                  <Select 
+                    value={form.state} 
+                    onValueChange={(val) => setForm(f => ({ 
+                      ...f, 
+                      state: val, 
+                      country: val === "Other" ? f.country : "India" 
+                    }))}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select state" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[280px]">
+                      {INDIA_STATES.map(s => (
+                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {form.state === "Other" && (
+                    <Input 
+                      placeholder="Enter State Name" 
+                      value={form.otherState} 
+                      onChange={e => setForm(f => ({ ...f, otherState: e.target.value }))}
+                      className="mt-2"
+                    />
+                  )}
                 </div>
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="country">Country</Label>
                   <Input id="country" value={form.country} onChange={e => setForm(f => ({ ...f, country: e.target.value }))} />
                 </div>
               </div>
               
-              {form.district && (
+              {form.state && (
                 <div className="p-3 rounded-lg bg-primary/5 border border-primary/10 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Info className="h-4 w-4 text-primary" />
                     <span className="text-sm font-medium">
-                      Shipping to <span className="capitalize font-bold">{form.region.replace("-", " ")}</span>
+                      Shipping to <span className="capitalize font-bold">{form.state === "Other" ? form.otherState : form.state}</span>
                     </span>
                   </div>
                   <span className="text-sm font-bold text-primary">₹{deliveryCharge} Delivery Fee</span>
