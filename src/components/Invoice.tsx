@@ -12,6 +12,11 @@ const Invoice: React.FC<InvoiceProps> = ({ order, profile }) => {
     const { t } = useTranslation();
     const { settings } = useSettings();
 
+    // Calculate subtotal from items
+    const subtotal = (order.order_items || []).reduce((acc: number, item: any) => acc + (Number(item.price) * item.quantity), 0);
+    // Shipping is the difference between total and subtotal
+    const shipping = Math.max(0, order.total - subtotal);
+
     return (
         <div className="bg-white p-8 max-w-4xl mx-auto shadow-lg border border-border print:shadow-none print:border-none print:p-0" id="invoice-content">
             {/* Header */}
@@ -25,7 +30,7 @@ const Invoice: React.FC<InvoiceProps> = ({ order, profile }) => {
                 </div>
                 <div className="text-right">
                     <h2 className="text-2xl font-bold uppercase text-primary">{t('invoice.title')}</h2>
-                    <p className="text-sm font-semibold">{t('invoice.order_id')}: #{order.id.slice(0, 8).toUpperCase()}</p>
+                    <p className="text-sm font-semibold">INV-{new Date(order.created_at).getFullYear()}-{order.id.slice(0, 4).toUpperCase()}</p>
                     <p className="text-sm">{t('invoice.date')}: {new Date(order.created_at).toLocaleDateString()}</p>
                 </div>
             </div>
@@ -35,8 +40,8 @@ const Invoice: React.FC<InvoiceProps> = ({ order, profile }) => {
                 <div>
                     <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">{t('invoice.bill_to')}</h3>
                     <p className="font-bold">{profile?.full_name || order.customer_name || t('profile.user')}</p>
-                    <p className="text-sm text-muted-foreground">{order.customer_email || profile?.email}</p>
-                    <p className="text-sm text-muted-foreground">{order.customer_phone}</p>
+                    <p className="text-sm text-muted-foreground">{profile?.email || order.customer_email || "Customer"}</p>
+                    <p className="text-sm text-muted-foreground">{order.phone || profile?.phone}</p>
                 </div>
                 {/* Shipping Info */}
                 <div className="text-right">
@@ -58,10 +63,10 @@ const Invoice: React.FC<InvoiceProps> = ({ order, profile }) => {
                 <tbody className="divide-y divide-border">
                     {(order.order_items || []).map((item: any, i: number) => (
                         <tr key={i} className="text-sm">
-                            <td className="py-4 px-2 font-medium">{item.products?.name}</td>
-                            <td className="py-4 px-2 text-right">₹{item.price_at_time}</td>
+                            <td className="py-4 px-2 font-medium">{item.products?.name} <span className="text-xs text-muted-foreground block font-normal">{item.variant_name}</span></td>
+                            <td className="py-4 px-2 text-right">₹{item.price}</td>
                             <td className="py-4 px-2 text-right">{item.quantity}</td>
-                            <td className="py-4 px-2 text-right font-bold">₹{item.price_at_time * item.quantity}</td>
+                            <td className="py-4 px-2 text-right font-bold">₹{Number(item.price) * item.quantity}</td>
                         </tr>
                     ))}
                 </tbody>
@@ -72,11 +77,11 @@ const Invoice: React.FC<InvoiceProps> = ({ order, profile }) => {
                 <div className="w-64 space-y-3">
                     <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Subtotal</span>
-                        <span>₹{order.total}</span>
+                        <span>₹{subtotal}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Shipping</span>
-                        <span>₹0</span>
+                        <span>{shipping > 0 ? `₹${shipping}` : t('checkout.free')}</span>
                     </div>
                     <div className="flex justify-between items-center border-t border-border pt-3">
                         <span className="text-lg font-bold">{t('invoice.total')}</span>

@@ -178,8 +178,8 @@ const Navbar = () => {
         <div className="flex items-center gap-3">
           <LanguageSwitcher />
 
-          {/* Cart */}
-          <Link to="/cart" className="relative group">
+          {/* Cart - Hidden on mobile as it's in MobileBottomNav */}
+          <Link to="/cart" className="hidden md:block relative group">
             <Button variant="ghost" size="icon" className="rounded-full hover:bg-primary/10 transition-colors">
               <ShoppingCart className="h-5 w-5 group-hover:scale-110 transition-transform" />
               {cartCount > 0 && (

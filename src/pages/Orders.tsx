@@ -3,26 +3,34 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Package, Loader2, CheckCircle2, Clock, Truck, CheckCircle, ExternalLink, ShieldCheck, Star } from "lucide-react";
+import { Package, Loader2, CheckCircle2, Clock, Truck, CheckCircle, ExternalLink, ShieldCheck, Star, ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import ReviewDialog from "@/components/ReviewDialog";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { getSmartFallback } from "@/lib/imageUtils";
+import { useProfile } from "@/hooks/useProfile";
+import Invoice from "@/components/Invoice";
+import { useToast } from "@/hooks/use-toast";
 
 const Orders = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const [reviewOrder, setReviewOrder] = useState<any>(null);
   const queryClient = useQueryClient();
+  const { profile } = useProfile();
+  const { toast } = useToast();
+  const [reviewOrder, setReviewOrder] = useState<any>(null);
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+  const [printingOrderId, setPrintingOrderId] = useState<string | null>(null);
 
   const { data: orders, isLoading } = useQuery({
     queryKey: ["orders", user?.id],
     queryFn: async () => {
       const { data } = await supabase
         .from("orders")
-        .select("*, order_items(*, products(name, image_url)), delivery_receipts(*)")
+        .select("*, order_items(*, products(name, slug, image_url)), delivery_receipts(*)")
         .eq("user_id", user!.id)
         .order("created_at", { ascending: false });
       
@@ -55,6 +63,51 @@ const Orders = () => {
     if (s === "shipped" || s === "on_the_way") return 3;
     if (s === "delivered") return 4;
     return 0;
+  };
+
+  const handlePrint = (orderId: string) => {
+    setPrintingOrderId(orderId);
+    setTimeout(() => {
+      const content = document.getElementById(`invoice-print-${orderId}`);
+      if (!content) {
+        toast({ title: "Error", description: "Invoice content not found", variant: "destructive" });
+        return;
+      }
+      
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        toast({ title: t('common.error'), description: "Please allow popups to download the invoice", variant: "destructive" });
+        return;
+      }
+
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Invoice - ${orderId}</title>
+            <script src="https://cdn.tailwindcss.com"></script>
+            <style>
+              @media print {
+                body { margin: 0; padding: 0; }
+                .no-print { display: none; }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="p-8">
+              ${content.innerHTML}
+            </div>
+            <script>
+              window.onload = () => {
+                window.print();
+                window.onafterprint = () => window.close();
+              };
+            </script>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+      setPrintingOrderId(null);
+    }, 500);
   };
 
   return (
@@ -99,21 +152,65 @@ const Orders = () => {
                     )}>
                       {order.status}
                     </span>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className={cn("rounded-full transition-transform duration-300", expandedOrderId === order.id && "rotate-90 bg-primary/10 text-primary")}
+                      onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)}
+                    >
+                      <ChevronRight className="h-5 w-5" />
+                    </Button>
                   </div>
                 </div>
 
                 <div className="p-6">
+                  {/* Summary row */}
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex -space-x-3 overflow-hidden">
+                      {order.order_items?.slice(0, 4).map((item: any, idx: number) => (
+                        <div key={idx} className="h-10 w-10 rounded-full border-2 border-white overflow-hidden bg-muted shadow-sm ring-1 ring-border">
+                          <img 
+                            src={item.products?.image_url || getSmartFallback(item.products?.name, item.products?.slug)} 
+                            alt="" 
+                            className="h-full w-full object-cover" 
+                          />
+                        </div>
+                      ))}
+                      {(order.order_items?.length || 0) > 4 && (
+                        <div className="h-10 w-10 rounded-full border-2 border-white bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shadow-sm ring-1 ring-border">
+                          +{(order.order_items?.length || 0) - 4}
+                        </div>
+                      )}
+                    </div>
+                    <Button 
+                      variant="link" 
+                      size="sm" 
+                      onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)}
+                      className="text-xs font-bold text-primary p-0 h-auto"
+                    >
+                      {expandedOrderId === order.id ? "Show Less" : "View Order Details"}
+                    </Button>
+                  </div>
+
+                  <AnimatePresence>
+                    {expandedOrderId === order.id && (
+                      <motion.div 
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden"
+                      >
                   {/* Items Section */}
                   <div className="grid gap-6 md:grid-cols-2 mb-8">
                     <div className="space-y-4">
                       {order.order_items?.map((item: any) => (
                         <div key={item.id} className="flex gap-4">
                           <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl border border-border bg-muted">
-                            {item.products?.image_url ? (
-                              <img src={item.products.image_url} alt={item.products.name} className="h-full w-full object-cover" />
-                            ) : (
-                              <Package className="h-full w-full p-4 text-muted-foreground/40" />
-                            )}
+                            <img 
+                              src={item.products?.image_url || getSmartFallback(item.products?.name, item.products?.slug)} 
+                              alt={item.products?.name} 
+                              className="h-full w-full object-cover" 
+                            />
                           </div>
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-bold truncate">{item.products?.name}</p>
@@ -214,16 +311,37 @@ const Orders = () => {
                           </div>
                         )}
                       </div>
-                      <Button variant="ghost" size="sm" className="text-xs font-bold text-muted-foreground hover:text-primary rounded-full">
-                        Download Invoice
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        {order.payment_status === 'verified' ? (
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-xs font-bold text-primary hover:text-primary/80 hover:bg-primary/5 rounded-full"
+                            onClick={() => handlePrint(order.id)}
+                          >
+                            Download Invoice
+                          </Button>
+                        ) : (
+                          <span className="text-[10px] font-bold text-muted-foreground italic bg-muted/30 px-3 py-1 rounded-full">
+                            Invoice available after payment verification
+                          </span>
+                        )}
+                      </div>
+                      
+                      {/* Hidden Invoice Component for Printing */}
+                      <div className="hidden" id={`invoice-print-${order.id}`}>
+                        <Invoice order={order} profile={profile} />
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
-            ))}
+                </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
-        ) : (
+        ))}
+      </div>
+    ) : (
           <div className="flex min-h-[60vh] flex-col items-center justify-center text-center max-w-md mx-auto">
             <div className="mb-6 rounded-3xl bg-primary/5 p-10 text-primary ring-1 ring-primary/10">
               <Package className="h-16 w-16" />
@@ -246,7 +364,7 @@ const Orders = () => {
           onSuccess={() => { queryClient.invalidateQueries({ queryKey: ["orders", user?.id] }); }}
           orderId={reviewOrder.id}
           userId={user.id}
-          userName={user.email?.split('@')[0] || "Customer"}
+          userName={profile?.full_name || user.email?.split('@')[0] || "Customer"}
         />
       )}
     </main>
