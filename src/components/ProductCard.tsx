@@ -1,6 +1,13 @@
 import { Link } from "react-router-dom";
 import { ShoppingCart, Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useCart } from "@/hooks/useCart";
 import { cn } from "@/lib/utils";
 import { getSmartFallback, DEFAULT_FARM_IMAGE } from "@/lib/imageUtils";
@@ -27,6 +34,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
 
   // Sort variants by price so the lowest price variant is selected by default
   const sortedVariants = [...(product.variants || [])].sort((a, b) => a.price - b.price);
+  const [localQty, setLocalQty] = useState(1);
   const [selectedVariantId, setSelectedVariantId] = useState<string>(sortedVariants[0]?.id || "");
 
   const selectedVariant = sortedVariants.find(v => v.id === selectedVariantId) || {
@@ -34,7 +42,6 @@ const ProductCard = ({ product }: ProductCardProps) => {
     name: product.name,
     price: product.price,
     unit: product.unit,
-    variant_name: ""
   };
 
   const id = product.id;
@@ -75,55 +82,52 @@ const ProductCard = ({ product }: ProductCardProps) => {
 
         <div className="mt-auto">
           <div className="mb-3">
-            {sortedVariants.length > 0 && (
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block mb-1.5 ml-0.5">
-                {t("products.quantity_label", "Select Quantity:")}
-              </span>
-            )}
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block mb-2 ml-0.5">
+              {t("products.quantity_label", "Available Weights:")}
+            </span>
             {sortedVariants.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {sortedVariants.map((v) => {
-                  const isActive = selectedVariantId === v.id;
-                  return (
-                    <button
-                      key={v.id}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setSelectedVariantId(v.id);
-                      }}
-                      className={cn(
-                        "group relative flex flex-col items-center justify-center rounded-xl border px-3 py-1.5 transition-all duration-300",
-                        isActive
-                          ? "border-primary bg-primary/5 shadow-sm"
-                          : "border-secondary/20 bg-secondary/5 hover:border-primary/30"
-                      )}
-                    >
-                      <span className={cn(
-                        "text-[10px] font-bold leading-none",
-                        isActive ? "text-primary" : "text-muted-foreground"
-                      )}>{v.unit}</span>
-                      <span className={cn(
-                        "text-[8px] font-medium opacity-70 mt-0.5",
-                        isActive ? "text-primary" : "text-muted-foreground/60"
-                      )}>₹{v.price}</span>
-                    </button>
-                  );
-                })}
+              <div onClick={(e) => e.preventDefault()}>
+                <Select
+                  value={selectedVariantId}
+                  onValueChange={(value) => setSelectedVariantId(value)}
+                >
+                  <SelectTrigger className="w-full h-9 rounded-xl border-primary/20 bg-background hover:border-primary/50 transition-colors text-xs font-bold shadow-sm">
+                    <SelectValue placeholder={t("products.select_option", "Select Option")} />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border border-primary/10 shadow-premium">
+                    {sortedVariants.map((v) => (
+                      <SelectItem
+                        key={v.id}
+                        value={v.id}
+                        className="text-xs focus:bg-primary/10 focus:text-primary rounded-lg cursor-pointer py-2"
+                      >
+                        <div className="flex items-center justify-between w-full min-w-[140px] gap-4">
+                          <span className="font-bold">{v.unit}</span>
+                          <span className="text-secondary font-black">₹{v.price}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             ) : product.unit ? (
-              <div className="flex items-center">
-                <span className="text-[10px] font-bold text-primary uppercase tracking-widest px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20">
-                  {product.unit} - ₹{product.price}
-                </span>
+              <div className="flex flex-wrap gap-1.5">
+                <div className="group relative flex min-w-[50px] flex-col items-center justify-center rounded-xl border border-primary bg-primary/10 py-1.5 shadow-sm ring-1 ring-primary/20">
+                  <span className="text-[10px] font-black leading-none text-primary">{product.unit}</span>
+                  <span className="text-[8px] font-bold opacity-70 mt-0.5 text-primary">₹{product.price}</span>
+                </div>
               </div>
             ) : null}
           </div>
 
           {/* Price + Action Button */}
-          <div className="flex items-center justify-between gap-2 border-t border-border/10 pt-3 mt-1">
-            <span className="text-xl font-black text-foreground drop-shadow-sm">₹{price * (cartItem?.quantity || 1)}</span>
+          <div className="flex flex-col gap-3 border-t border-border/10 pt-3 mt-1">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xl font-black text-foreground drop-shadow-sm">
+                ₹{price * (isInCart ? (cartItem?.quantity || 1) : localQty)}
+              </span>
 
-            {isInCart ? (
+              {/* Multiplier / Local Qty */}
               <div className="flex items-center gap-1.5 rounded-xl border-2 border-primary/20 bg-primary/5 p-0.5 shadow-sm">
                 <Button
                   variant="ghost"
@@ -131,36 +135,53 @@ const ProductCard = ({ product }: ProductCardProps) => {
                   className="h-8 w-8 rounded-lg hover:bg-primary/10 text-primary transition-colors"
                   onClick={(e) => {
                     e.preventDefault();
-                    updateQuantity(id, (cartItem?.quantity || 0) - 1, variantName);
+                    if (isInCart) {
+                      updateQuantity(id, (cartItem?.quantity || 0) - 1, variantName);
+                    } else {
+                      setLocalQty(prev => Math.max(1, prev - 1));
+                    }
                   }}
                 >
                   <Minus className="h-4 w-4 stroke-[3px]" />
                 </Button>
-                <span className="w-5 text-center text-sm font-black text-primary">{cartItem?.quantity}</span>
+                <span className="w-5 text-center text-sm font-black text-primary">
+                  {isInCart ? cartItem?.quantity : localQty}
+                </span>
                 <Button
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8 rounded-lg hover:bg-primary/10 text-primary transition-colors"
                   onClick={(e) => {
                     e.preventDefault();
-                    updateQuantity(id, (cartItem?.quantity || 0) + 1, variantName);
+                    if (isInCart) {
+                      updateQuantity(id, (cartItem?.quantity || 0) + 1, variantName);
+                    } else {
+                      setLocalQty(prev => prev + 1);
+                    }
                   }}
                 >
                   <Plus className="h-4 w-4 stroke-[3px]" />
                 </Button>
               </div>
-            ) : (
+            </div>
+
+            {!isInCart && (
               <Button
                 size="sm"
-                className="h-9 px-5 rounded-xl bg-primary shadow-premium hover:shadow-primary/30 hover:scale-105 active:scale-95 transition-all font-bold text-xs uppercase tracking-wider gap-2 group/btn"
+                className="w-full h-9 rounded-xl bg-primary shadow-premium hover:shadow-primary/30 hover:scale-[1.02] active:scale-95 transition-all font-bold text-xs uppercase tracking-wider gap-2 group/btn"
                 onClick={(e) => {
                   e.preventDefault();
-                  addToCart(id, 1, variantName);
+                  addToCart(id, localQty, variantName);
                 }}
               >
-                <Plus className="h-3.5 w-3.5 group-hover/btn:rotate-90 transition-transform" />
-                {t("products.add_to_cart", "ADD")}
+                <ShoppingCart className="h-3.5 w-3.5" />
+                {t("products.add_to_cart", "Add to Cart")}
               </Button>
+            )}
+            {isInCart && (
+              <div className="bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-tighter text-center py-1 rounded-lg border border-primary/20">
+                In Cart
+              </div>
             )}
           </div>
 
