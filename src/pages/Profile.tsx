@@ -486,4 +486,3 @@ const Profile = () => {
 };
 
 export default Profile;
-file;
