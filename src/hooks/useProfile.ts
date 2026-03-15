@@ -5,15 +5,21 @@ import { useAuth } from "@/hooks/useAuth";
 export interface UserProfile {
     id?: string;
     user_id: string;
+    full_name?: string;
     avatar_url?: string;
-    instagram_handles: string[];
-    whatsapp_numbers: string[];
-    gmail_addresses: string[];
+    phone?: string;
+    addresses?: any[];
+    instagram_handles?: string[];
+    whatsapp_numbers?: string[];
+    gmail_addresses?: string[];
 }
 
 const defaultProfile = (userId: string): UserProfile => ({
     user_id: userId,
+    full_name: "",
     avatar_url: "",
+    phone: "",
+    addresses: [],
     instagram_handles: [],
     whatsapp_numbers: [],
     gmail_addresses: [],
@@ -28,8 +34,8 @@ export const useProfile = () => {
     const fetchProfile = useCallback(async () => {
         if (!user?.id) { setLoading(false); return; }
         setLoading(true);
-        const { data } = await supabase
-            .from("user_profiles" as any)
+        const { data } = await (supabase
+            .from("profiles") as any)
             .select("*")
             .eq("user_id", user.id)
             .maybeSingle();
@@ -46,8 +52,8 @@ export const useProfile = () => {
     const saveProfile = async (updated: UserProfile) => {
         if (!user?.id) return false;
         setSaving(true);
-        const { error } = await supabase
-            .from("user_profiles" as any)
+        const { error } = await (supabase
+            .from("profiles") as any)
             .upsert({ ...updated, user_id: user.id }, { onConflict: "user_id" });
         setSaving(false);
         if (!error) {
