@@ -11,9 +11,12 @@ import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import {
   ShoppingBag, CreditCard, Truck, CheckCircle,
-  Smartphone, ArrowRight, Loader2, Copy, QrCode, Info, X, UploadCloud, ArrowLeft
+  Smartphone, ArrowRight, Loader2, Copy, QrCode, Info, X, UploadCloud, ArrowLeft,
+  MapPin, Check
 } from "lucide-react";
+import { useProfile } from "@/hooks/useProfile";
 import { QRCodeCanvas } from "qrcode.react";
+import { cn } from "@/lib/utils";
 
 // ── Delivery charge table ─────────────────────────────────────
 const DELIVERY_TIERS: { maxGrams: number; hyd: number; apTs: number }[] = [
@@ -59,6 +62,7 @@ const Checkout = () => {
   const { t } = useTranslation();
   const { items, cartTotal, clearCart } = useCart();
   const { user } = useAuth();
+  const { profile } = useProfile();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [step, setStep] = useState<"details" | "pay">("details");
@@ -81,6 +85,25 @@ const Checkout = () => {
   const [txnId, setTxnId] = useState("");
   const [screenshotUrl, setScreenshotUrl] = useState("");
   const [uploadingScreenshot, setUploadingScreenshot] = useState(false);
+  const [selectedAddressIdx, setSelectedAddressIdx] = useState<number | null>(null);
+
+  const handleSelectAddress = (addr: any, idx: number) => {
+    setSelectedAddressIdx(idx);
+    const region = ["hyderabad", "rangareddy", "vicarabad", "medchal", "malkajgiri"].some(d => addr.city.toLowerCase().includes(d) || addr.street.toLowerCase().includes(d)) ? "hyderabad" : "ap-ts";
+    
+    setForm({
+      ...form,
+      houseNo: addr.street.split(',')[0] || addr.street,
+      streetName: addr.street.split(',').slice(1).join(',').trim() || addr.street,
+      mandal: addr.city,
+      district: addr.city,
+      pincode: addr.zip,
+      state: addr.state,
+      region: region
+    });
+    
+    toast({ title: `Selected "${addr.label}" address` });
+  };
 
   const totalGrams = items.reduce((acc, item) => {
     const unitToParse = item.variant_name || item.product.unit || "";
@@ -255,8 +278,48 @@ const Checkout = () => {
 
       <div className="grid gap-8 lg:grid-cols-3">
         {step === "details" ? (
-          <form onSubmit={handleProceedToPayment} className="space-y-5 lg:col-span-2">
-            <div className="rounded-xl border bg-card p-6 shadow-card space-y-4">
+          <form onSubmit={handleProceedToPayment} className="space-y-6 lg:col-span-2">
+            {/* Saved Addresses Section */}
+            {profile?.addresses && profile.addresses.length > 0 && (
+              <div className="space-y-3">
+                <Label className="text-sm font-bold text-muted-foreground uppercase tracking-widest pl-1">Use Saved Address</Label>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {profile.addresses.map((addr: any, idx: number) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => handleSelectAddress(addr, idx)}
+                      className={cn(
+                        "text-left p-4 rounded-2xl border transition-all duration-300 relative group",
+                        selectedAddressIdx === idx 
+                          ? "bg-primary/5 border-primary shadow-sm" 
+                          : "bg-white border-border hover:border-primary/50 hover:shadow-md"
+                      )}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className={cn(
+                          "text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full",
+                          selectedAddressIdx === idx ? "bg-primary text-white" : "bg-muted text-muted-foreground"
+                        )}>
+                          {addr.label}
+                        </span>
+                        {selectedAddressIdx === idx && (
+                          <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center text-white">
+                            <Check className="h-3 w-3" />
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-xs font-bold truncate leading-tight">{addr.street}</p>
+                      <p className="text-[10px] text-muted-foreground font-medium mt-1">
+                        {addr.city}, {addr.zip}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="rounded-2xl border bg-card p-6 shadow-card space-y-4">
               <h3 className="font-display text-lg font-semibold flex items-center gap-2"><Truck className="h-5 w-5 text-primary" /> Delivery Details</h3>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>

@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import Invoice from "@/components/Invoice";
 import { cn } from "@/lib/utils";
+import { getSmartFallback } from "@/lib/imageUtils";
 
 const Profile = () => {
   const { user, loading: authLoading, signOut } = useAuth();
@@ -418,8 +419,13 @@ const Profile = () => {
 
                         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
                           {(order.order_items as any[])?.map((item: any) => (
-                            <div key={item.id} className="flex-shrink-0 flex items-center gap-2 bg-muted/40 p-2 rounded-lg border border-border/50 max-w-[180px]">
-                              <img src={item.products?.image_url || "/placeholder.svg"} className="h-8 w-8 rounded object-cover shadow-sm" />
+                            <div key={item.id} className="flex-shrink-0 flex items-center gap-2 bg-muted/40 p-2 rounded-lg border border-border/50 max-w-[180px] group/item">
+                              <img 
+                                src={item.products?.image_url || getSmartFallback(item.products?.name, item.products?.slug)} 
+                                alt={item.products?.name} 
+                                loading="lazy"
+                                className="h-8 w-8 rounded object-cover shadow-sm transition-transform duration-500 group-hover/item:scale-110" 
+                              />
                               <div className="min-w-0">
                                 <p className="text-[10px] font-medium truncate">{item.products?.name}</p>
                                 <p className="text-[8px] text-muted-foreground">{item.quantity} units</p>
