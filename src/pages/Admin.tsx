@@ -840,10 +840,6 @@ const ProductForm = ({ product, categories, onClose, onSaved }: { product: any; 
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Main Image URL (Legacy)</Label>
-              <Input value={form.image_url} placeholder="Primary URL..." onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))} className="text-xs" />
-            </div>
 
             <div><Label>{t('admin.form.slug')}</Label><Input value={form.slug} onChange={e => setForm(f => ({ ...f, slug: e.target.value }))} className="bg-muted/50 font-mono text-xs" /></div>
           </div>
