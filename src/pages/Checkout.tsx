@@ -25,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 
 // ── Delivery charge table ─────────────────────────────────────
 const DELIVERY_TIERS: { maxGrams: number; hyd: number; apTs: number }[] = [
@@ -109,6 +110,8 @@ const Checkout = () => {
   const [screenshotUrl, setScreenshotUrl] = useState("");
   const [uploadingScreenshot, setUploadingScreenshot] = useState(false);
   const [selectedAddressIdx, setSelectedAddressIdx] = useState<number | null>(null);
+  const [saveAddress, setSaveAddress] = useState(true);
+  const { saveProfile } = useProfile();
 
   const handleSelectAddress = (addr: any, idx: number) => {
     setSelectedAddressIdx(idx);
@@ -126,6 +129,7 @@ const Checkout = () => {
     });
     
     toast({ title: `Selected "${addr.label}" address` });
+    setSaveAddress(false); 
   };
 
   const totalGrams = items.reduce((acc, item) => {
@@ -233,6 +237,33 @@ const Checkout = () => {
       }
 
       console.log("Order items inserted successfully");
+
+      // Step 3: Optional Address Save
+      if (saveAddress && user && profile) {
+        const currentAddress = {
+          label: "Checkout Address",
+          street: `${form.houseNo}, ${form.streetName}`,
+          city: form.mandal,
+          state: form.state,
+          otherState: form.otherState,
+          zip: form.pincode,
+          country: form.country,
+        };
+
+        const isDuplicate = profile.addresses?.some((a: any) => 
+          a.street === currentAddress.street && 
+          a.city === currentAddress.city && 
+          a.zip === currentAddress.zip
+        );
+
+        if (!isDuplicate) {
+          const newAddresses = [...(profile.addresses || []), currentAddress];
+          await saveProfile({
+            ...profile,
+            addresses: newAddresses
+          });
+        }
+      }
 
       await clearCart();
       toast({ title: t("checkout.order_placed", "Order placed successfully!") });
@@ -438,6 +469,19 @@ const Checkout = () => {
                 <Label htmlFor="notes">Notes</Label>
                 <Textarea id="notes" rows={2} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
               </div>
+
+              {selectedAddressIdx === null && (
+                <div className="flex items-center space-x-2 pt-2">
+                  <Checkbox 
+                    id="saveAddress" 
+                    checked={saveAddress} 
+                    onCheckedChange={(checked) => setSaveAddress(checked as boolean)} 
+                  />
+                  <label htmlFor="saveAddress" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    Save this address to my profile
+                  </label>
+                </div>
+              )}
             </div>
             <Button variant="hero" size="lg" className="w-full" type="submit">Pay ₹{total} <ArrowRight className="ml-2 h-5 w-5" /></Button>
           </form>

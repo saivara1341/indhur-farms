@@ -136,7 +136,7 @@ const Profile = () => {
     }
   };
 
-  const handleAddOrUpdateAddress = () => {
+  const handleAddOrUpdateAddress = async () => {
     const newAddresses = [...form.addresses];
     if (editingAddressIdx !== null) {
       newAddresses[editingAddressIdx] = addressForm;
@@ -144,15 +144,40 @@ const Profile = () => {
       newAddresses.push(addressForm);
     }
 
-    setForm(f => ({ ...f, addresses: newAddresses }));
-    setShowAddressDialog(false);
-    setAddressForm({ label: "Home", street: "", city: "", state: "Andhra Pradesh", otherState: "", zip: "", country: "India" });
-    setEditingAddressIdx(null);
+    // Auto-save to profile
+    const success = await saveProfile({
+      ...profile!,
+      addresses: newAddresses
+    });
+
+    if (success) {
+      setForm(f => ({ ...f, addresses: newAddresses }));
+      setShowAddressDialog(false);
+      setAddressForm({ label: "Home", street: "", city: "", state: "Andhra Pradesh", otherState: "", zip: "", country: "India" });
+      setEditingAddressIdx(null);
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+      toast({ title: "Address saved successfully!" });
+    } else {
+      toast({ title: "Failed to save address", variant: "destructive" });
+    }
   };
 
-  const removeAddress = (idx: number) => {
+  const removeAddress = async (idx: number) => {
     const newAddresses = form.addresses.filter((_, i) => i !== idx);
-    setForm(f => ({ ...f, addresses: newAddresses }));
+    
+    // Auto-save to profile
+    const success = await saveProfile({
+      ...profile!,
+      addresses: newAddresses
+    });
+
+    if (success) {
+      setForm(f => ({ ...f, addresses: newAddresses }));
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+      toast({ title: "Address removed" });
+    } else {
+      toast({ title: "Failed to remove address", variant: "destructive" });
+    }
   };
 
   if (authLoading || profileLoading || !user) return (
@@ -384,13 +409,6 @@ const Profile = () => {
                     </div>
                   )}
                 </div>
-
-                {/* Save all changes button for address removals */}
-                {profile?.addresses?.length !== form.addresses.length && (
-                  <div className="pt-6 animate-in slide-in-from-bottom-2">
-                    <Button onClick={handleUpdateProfile} className="w-full sm:w-auto">Save Address Changes</Button>
-                  </div>
-                )}
               </div>
             )}
 
