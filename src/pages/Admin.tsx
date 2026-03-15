@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, Component, ErrorInfo, ReactNode } from "react";
+import React, { useState, useEffect, useRef, Component, ErrorInfo, ReactNode } from "react";
 import i18n from "@/i18n";
 import { motion } from "framer-motion";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -1475,7 +1475,7 @@ const SettingsTab = () => {
   const { settings } = useSettings();
   const [loading, setLoading] = useState(false);
   const [activeSubTab, setActiveSubTab] = useState("profile");
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   
   const { data: profile } = useQuery({
