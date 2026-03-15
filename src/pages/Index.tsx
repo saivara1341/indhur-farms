@@ -114,7 +114,6 @@ const Index = () => {
                   transition={{ delay: 0.3 }}
                   className="mb-6 flex w-fit flex-wrap items-center justify-center gap-x-2 gap-y-2 rounded-full bg-white/10 border border-white/20 px-4 py-2.5 text-[10px] sm:text-xs font-bold uppercase tracking-wider text-white shadow-sm backdrop-blur-md text-center"
                 >
-                  <Star className="h-3 w-3 fill-white/80" />
                   <span className="opacity-90">{parts[0]}</span>
                   {parts[1] && (
                     <span className="whitespace-nowrap text-secondary font-black bg-white/10 px-2.5 py-0.5 rounded-full border border-white/10">
