@@ -149,24 +149,21 @@ const Checkout = () => {
 
     try {
       // Step 1: Create Order
-      const { data: order, error: orderError } = await (supabase.from("orders") as any)
+      const { data: orders, error: orderError } = await (supabase.from("orders") as any)
         .insert(orderPayload)
-        .select()
-        .single();
+        .select();
 
       if (orderError) {
         console.error("DEBUG: Order Insert Error Details:", orderError);
-        
-        // Check for specific common errors
-        if (orderError.code === "PGRST204") {
-          throw new Error("Order was not created (Single row expected but none returned). This might be due to RLS policies.");
-        }
-        if (orderError.message?.includes("column")) {
-          throw new Error(`Database Schema Mismatch: ${orderError.message}. Please contact support.`);
-        }
-        throw orderError;
+        throw new Error(`Database Error: ${orderError.message}`);
       }
 
+      if (!orders || orders.length === 0) {
+        console.error("DEBUG: No order returned after insert. Payload was:", orderPayload);
+        throw new Error("Order was not created successfully (RLS check failed on return). Please ensure you ran the SQL fix.");
+      }
+
+      const order = orders[0];
       console.log("Order created successfully:", order);
 
       // Step 2: Create Order Items
