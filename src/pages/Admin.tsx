@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
-import { Package, ShoppingBag, ShoppingCart, Truck, Plus, Pencil, Trash2, CreditCard, Search, ExternalLink, ListTree, LayoutDashboard, Settings, ChevronRight, ChevronDown, ChevronUp, BarChart3, Users, Shield, ImagePlus, X, UploadCloud, Loader2, AlertTriangle, TrendingUp, Zap, Tag, TrendingDown, DollarSign, ClipboardList, Star, MessageSquare, Check, Ban, Info, History, StickyNote, FileText, CheckCircle, Smartphone, Filter, ArrowUpDown } from "lucide-react";
+import { Package, ShoppingBag, ShoppingCart, Truck, Plus, Pencil, Trash2, CreditCard, Search, ExternalLink, ListTree, LayoutDashboard, Settings, ChevronRight, ChevronDown, ChevronUp, BarChart3, Users, Shield, ImagePlus, X, UploadCloud, Loader2, AlertTriangle, TrendingUp, Zap, Tag, TrendingDown, DollarSign, ClipboardList, Star, MessageSquare, Check, Ban, Info, History, StickyNote, FileText, CheckCircle, Smartphone, Filter, ArrowUpDown, Camera } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from "@/components/ui/card";
 import { formatDistanceToNow } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
@@ -1475,6 +1475,8 @@ const SettingsTab = () => {
   const { settings } = useSettings();
   const [loading, setLoading] = useState(false);
   const [activeSubTab, setActiveSubTab] = useState("profile");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   
   const { data: profile } = useQuery({
     queryKey: ["admin-profile"],
@@ -1514,6 +1516,32 @@ const SettingsTab = () => {
       });
     }
   }, [settings]);
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    try {
+      setUploadingAvatar(true);
+      const fileExt = file.name.split('.').pop();
+      const path = `avatars/admin-${user.id}-${Math.random()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("product-images")
+        .upload(path, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage.from("product-images").getPublicUrl(path);
+      
+      setProfileForm(prev => ({ ...prev, avatar_url: data.publicUrl }));
+      toast({ title: t('admin.settings_config.profile_avatar_updated', 'Profile image updated!') });
+    } catch (error: any) {
+      toast({ title: "Upload failed", description: error.message, variant: "destructive" });
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1606,9 +1634,40 @@ const SettingsTab = () => {
                   <Label>{t('admin.name')}</Label>
                   <Input value={profileForm.full_name} onChange={e => setProfileForm(f => ({ ...f, full_name: e.target.value }))} />
                 </div>
-                <div className="space-y-2">
-                  <Label>{t('admin.upload_pi', 'Upload Pi')}</Label>
-                  <Input value={profileForm.avatar_url} onChange={e => setProfileForm(f => ({ ...f, avatar_url: e.target.value }))} />
+                <div className="flex flex-col items-center gap-4 py-4">
+                  <div className="relative group">
+                    <div className="h-24 w-24 rounded-full overflow-hidden ring-4 ring-primary/10 shadow-lg bg-primary/5 flex items-center justify-center border border-border">
+                      {profileForm.avatar_url ? (
+                        <img src={profileForm.avatar_url} alt="Admin" className="h-full w-full object-cover" />
+                      ) : (
+                        <Users className="h-10 w-10 text-muted-foreground" />
+                      )}
+                      {uploadingAvatar && (
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                          <Loader2 className="h-6 w-6 animate-spin text-white" />
+                        </div>
+                      )}
+                    </div>
+                    <button 
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadingAvatar}
+                      className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-primary text-white flex items-center justify-center shadow-md hover:scale-110 active:scale-95 transition-all border-2 border-background"
+                    >
+                      <Camera className="h-4 w-4" />
+                    </button>
+                    <input 
+                      type="file" 
+                      ref={fileInputRef} 
+                      className="hidden" 
+                      accept="image/*" 
+                      onChange={handleAvatarUpload} 
+                    />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs font-bold uppercase tracking-wider">{t('admin.settings_config.profile_photo', 'Profile Photo')}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase">{t('admin.settings_config.photo_hint', 'Click camera icon to change')}</p>
+                  </div>
                 </div>
                 <Button type="submit" disabled={loading} className="w-full sm:w-auto">
                   {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
