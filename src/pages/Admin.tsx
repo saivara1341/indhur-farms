@@ -774,7 +774,7 @@ const ProductForm = ({ product, categories, onClose, onSaved }: { product: any; 
                 <Label>{t('admin.form.unit')}</Label>
                 <Input value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} placeholder="kg, g, piece" />
                 <div className="mt-1.5 flex flex-wrap gap-1">
-                  {["250g", "500g", "1kg", "1 unit", "5kg"].map(u => (
+                  {["250g", "500g", "1kg", "2kg", "3kg", "4kg", "5kg"].map(u => (
                     <button
                       key={u}
                       type="button"
@@ -855,18 +855,53 @@ const ProductForm = ({ product, categories, onClose, onSaved }: { product: any; 
               <Label className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Product Variants (Optional)</Label>
               <p className="text-[10px] text-muted-foreground">Add multiple quantities/weights like 250g, 500g etc.</p>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setForm(f => ({
-                ...f,
-                variants: [...f.variants, { id: crypto.randomUUID(), name: "", price: f.price, stock: f.stock, unit: "" }]
-              }))}
-              className="h-8 gap-1.5 text-xs font-bold"
-            >
-              <Plus className="h-3 w-3" /> Add Variant
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const basePrice = Number(form.price);
+                  const standardWeights = [
+                    { unit: "250g", price: basePrice },
+                    { unit: "500g", price: basePrice * 2 },
+                    { unit: "1kg", price: basePrice * 4 },
+                    { unit: "2kg", price: basePrice * 8 },
+                    { unit: "3kg", price: basePrice * 12 },
+                    { unit: "4kg", price: basePrice * 16 },
+                    { unit: "5kg", price: basePrice * 20 }
+                  ];
+                  setForm(f => ({
+                    ...f,
+                    variants: [
+                      ...f.variants,
+                      ...standardWeights.map(w => ({
+                        id: crypto.randomUUID(),
+                        name: `${f.name} ${w.unit}`,
+                        price: w.price,
+                        stock: f.stock,
+                        unit: w.unit
+                      }))
+                    ]
+                  }));
+                }}
+                className="h-8 gap-1.5 text-[10px] font-bold border-primary/20 hover:bg-primary/5"
+              >
+                <Zap className="h-3 w-3 text-primary" /> Quick Weights
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setForm(f => ({
+                  ...f,
+                  variants: [...f.variants, { id: crypto.randomUUID(), name: "", price: f.price, stock: f.stock, unit: "" }]
+                }))}
+                className="h-8 gap-1.5 text-xs font-bold"
+              >
+                <Plus className="h-3 w-3" /> Add Variant
+              </Button>
+            </div>
           </div>
 
           <div className="space-y-3">
