@@ -103,7 +103,8 @@
     "descriptions": {
       "dry_turmeric_fingers": "High-quality dry turmeric fingers for home grinding.",
       "pure_turmeric_powder": "Pure, stone-ground turmeric powder from Indhur Farms."
-    }
+    },
+    "browse_more": "Browse More Products"
   },
   "cart": {
     "title": "Your Shopping Cart",
@@ -143,13 +144,11 @@
     "total": "Total",
     "order_success": "Order placed successfully!",
     "order_failed": "Failed to place order. Please try again.",
+    "order_placed": "Order Placed Successfully!",
+    "order_success_desc": "Thank you for your order! We've received your request and will start processing it right away.",
     "screenshot_required": "Please upload the payment screenshot",
     "payment_screenshot": "Payment Screenshot",
     "back_to_cart": "Back to Cart",
-    "change_delivery_details": "Change Details",
-    "delivery_details": "Delivery Details",
-    "payment": "Payment Method",
-    "indian_phone_hint": "Enter 10-digit number (starts with 6–9)",
     "app_link": "App Link",
     "scan_qr": "Scan QR",
     "upi_id_label": "UPI ID",
@@ -157,7 +156,7 @@
     "scan_with_any_upi": "Scan with any UPI App",
     "copy_upi_id": "Copy UPI ID",
     "enter_txn_id_hint": "Enter the transaction ID after successful payment",
-    "txn_id_placeholder": "Enter Transaction ID (Ref No.)",
+    "indian_phone_hint": "Enter 10-digit number (starts with 6–9)",
     "admin_verification_note": "Payment will be verified by the admin before confirmation.",
     "proceed_to_payment": "Proceed to Payment",
     "regions": {
@@ -170,6 +169,7 @@
   },
   "orders": {
     "title": "My Orders",
+    "track_order": "Track Your Order",
     "loading": "Loading your orders...",
     "no_orders": "No orders yet",
     "start_shopping": "Looks like you haven't placed any orders yet. Start shopping!",

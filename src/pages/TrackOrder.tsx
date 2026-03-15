@@ -18,11 +18,23 @@ interface Order {
   order_items: any[];
 }
 
+import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
+
 const TrackOrder = () => {
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [orderIdInput, setOrderIdInput] = useState(searchParams.get("id") || "");
   const [phoneInput, setPhoneInput] = useState("");
+  
+  useEffect(() => {
+    if (user) {
+      navigate("/orders");
+    }
+  }, [user, navigate]);
   
   const currentOrderId = searchParams.get("id");
   const currentPhone = searchParams.get("phone");

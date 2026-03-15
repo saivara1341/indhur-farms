@@ -161,6 +161,7 @@ const Navbar = () => {
           {[
             { to: "/", label: t('nav.home') },
             { to: "/products", label: t('nav.shop') },
+            { to: "/orders", label: t('orders.title') },
             { to: "/about", label: t('nav.about') },
           ].map((item) => (
             <Link
@@ -268,10 +269,23 @@ const Navbar = () => {
                         </div>
 
                         <div className="min-w-0 flex-1">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-0.5">{t('nav.profile')}</p>
                           <p className="font-bold text-foreground truncate">{displayName}</p>
                           <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                         </div>
                       </div>
+                    </div>
+
+                    {/* Profile Link */}
+                    <div className="px-4 py-2 border-b border-border">
+                      <Link 
+                        to="/profile" 
+                        onClick={() => setProfileOpen(false)}
+                        className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-bold text-foreground hover:bg-primary/5 hover:text-primary transition-all group"
+                      >
+                        <User className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
+                        {t('nav.profile')}
+                      </Link>
                     </div>
 
                     {/* Social handles */}
@@ -365,6 +379,7 @@ const Navbar = () => {
           <nav className="flex flex-col gap-3">
             <Link to="/" className="text-sm font-medium" onClick={() => setMobileOpen(false)}>{t('nav.home')}</Link>
             <Link to="/products" className="text-sm font-medium" onClick={() => setMobileOpen(false)}>{t('nav.shop')}</Link>
+            <Link to="/orders" className="text-sm font-medium" onClick={() => setMobileOpen(false)}>{t('orders.title')}</Link>
             <Link to="/about" className="text-sm font-medium" onClick={() => setMobileOpen(false)}>{t('nav.about')}</Link>
             {user ? (
               <>
@@ -373,9 +388,17 @@ const Navbar = () => {
                     <Shield className="h-4 w-4" /> {t('nav.manage_store')}
                   </Link>
                 )}
-                <div className="rounded-xl border border-border p-3 space-y-1">
-                  <p className="text-xs font-bold">{displayName}</p>
+                <div className="rounded-xl border border-border p-3 space-y-1 bg-muted/30">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-1">{t('nav.profile')}</p>
+                  <p className="text-sm font-bold">{displayName}</p>
                   <p className="text-xs text-muted-foreground">{user.email}</p>
+                  <Link 
+                    to="/profile" 
+                    className="flex items-center gap-2 mt-2 pt-2 border-t border-border/50 text-sm font-bold text-primary"
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    <User className="h-4 w-4" /> {t('nav.profile')}
+                  </Link>
                   {profile?.instagram_handles?.filter(Boolean).map((h, i) => (
                     <a key={i} href={`https://instagram.com/${h.replace("@", "")}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-sm text-pink-500 font-medium">
                       <Instagram className="h-4 w-4" /> {h.startsWith("@") ? h : `@${h}`}

@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Home, ShoppingBag, ShoppingCart, Info } from "lucide-react";
+import { Home, ShoppingBag, ShoppingCart, Info, Package, User } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -11,8 +11,9 @@ const MobileBottomNav = () => {
   const navItems = [
     { to: "/", label: "Home", icon: Home },
     { to: "/products", label: "Shop", icon: ShoppingBag },
+    { to: "/orders", label: "Orders", icon: Package },
     { to: "/cart", label: "Cart", icon: ShoppingCart, badge: cartCount },
-    { to: "/about", label: "About Us", icon: Info },
+    { to: "/profile", label: "Profile", icon: User },
   ];
 
   return (
