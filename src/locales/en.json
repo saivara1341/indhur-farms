@@ -137,7 +137,9 @@
     "order_success": "Order placed successfully!",
     "order_failed": "Failed to place order. Please try again.",
     "screenshot_required": "Please upload the payment screenshot",
-    "payment_screenshot": "Payment Screenshot"
+    "payment_screenshot": "Payment Screenshot",
+    "back_to_cart": "Back to Cart",
+    "change_delivery_details": "Change Details"
   },
   "orders": {
     "title": "My Orders",

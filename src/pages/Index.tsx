@@ -202,7 +202,7 @@ const Index = () => {
                   transition={{ delay: i * 0.1 }}
                   viewport={{ once: true }}
                 >
-                  <ProductCard product={product} />
+                  <ProductCard product={product} showAllVariants={true} />
                 </motion.div>
               ))}
             </div>

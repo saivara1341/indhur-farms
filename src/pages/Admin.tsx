@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
-import { Package, ShoppingBag, ShoppingCart, Truck, Plus, Pencil, Trash2, CreditCard, Search, ExternalLink, ListTree, LayoutDashboard, Settings, ChevronRight, BarChart3, Users, Shield, ImagePlus, X, UploadCloud, Loader2, AlertTriangle, TrendingUp, Zap, Tag, TrendingDown, DollarSign, ClipboardList, Star, MessageSquare, Check, Ban, Info, History, StickyNote, FileText } from "lucide-react";
+import { Package, ShoppingBag, ShoppingCart, Truck, Plus, Pencil, Trash2, CreditCard, Search, ExternalLink, ListTree, LayoutDashboard, Settings, ChevronRight, ChevronDown, ChevronUp, BarChart3, Users, Shield, ImagePlus, X, UploadCloud, Loader2, AlertTriangle, TrendingUp, Zap, Tag, TrendingDown, DollarSign, ClipboardList, Star, MessageSquare, Check, Ban, Info, History, StickyNote, FileText, CheckCircle, Smartphone } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from "@/components/ui/card";
 import { formatDistanceToNow } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
@@ -1016,10 +1016,11 @@ const STATUS_STYLES: Record<string, { bg: string; text: string; dot: string }> =
 };
 
 const OrdersTab = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState("all");
+  const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
 
   const { data: orders, isLoading } = useQuery({
     queryKey: ["admin-orders"],
@@ -1030,8 +1031,15 @@ const OrdersTab = () => {
         .order("created_at", { ascending: false });
       return data || [];
     },
-    refetchInterval: 30000, // auto-refresh every 30s
+    refetchInterval: 30000,
   });
+
+  const toggleOrder = (id: string) => {
+    const next = new Set(expandedOrders);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setExpandedOrders(next);
+  };
 
   const updateStatus = async (orderId: string, status: string) => {
     const { error } = await (supabase.from("orders" as any).update({ status } as any) as any).eq("id", orderId);
@@ -1059,7 +1067,7 @@ const OrdersTab = () => {
   const counts = STATUS_PIPELINE.reduce((acc, s) => ({ ...acc, [s]: (orders as any[])?.filter(o => o.status === s).length || 0 }), {} as Record<string, number>);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* Pipeline Filter Tabs */}
       <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
         <button
@@ -1081,136 +1089,209 @@ const OrdersTab = () => {
       </div>
 
       {/* Order Cards */}
-      {filtered?.map((order: any) => {
-        const style = STATUS_STYLES[order.status] || STATUS_STYLES.pending;
-        const orderNum = (order as any).order_number || `#${order.id.slice(0, 8)}`;
-        const payStatus = (order as any).payment_status || "pending";
-        return (
-          <div key={order.id} className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-            {/* Header */}
-            <div className={cn("flex flex-wrap items-center justify-between gap-2 px-5 py-3 border-b", style.bg)}>
-              <div className="flex items-center gap-2">
-                <span className={cn("h-2 w-2 rounded-full", style.dot)} />
-                <span className={cn("font-bold text-sm", style.text)}>{orderNum}</span>
-                <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide", style.bg, style.text)}>{t(`admin.pipeline.${order.status}`)}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-bold border",
-                  payStatus === "verified" ? "bg-green-100 text-green-700 border-green-300" :
-                    payStatus === "failed" ? "bg-red-100 text-red-700 border-red-300" :
-                      "bg-amber-100 text-amber-700 border-amber-300"
-                )}>💰 {t(`admin.payment_status.${payStatus}`)}</span>
-                <span className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleDateString(i18n.language, { day: "numeric", month: "short" })}</span>
-              </div>
-            </div>
+      <div className="grid gap-3">
+        {filtered?.map((order: any) => {
+          const style = STATUS_STYLES[order.status] || STATUS_STYLES.pending;
+          const orderNum = (order as any).order_number || `#${order.id.slice(0, 8)}`;
+          const payStatus = (order as any).payment_status || "pending";
+          const isExpanded = expandedOrders.has(order.id);
 
-            {/* Body */}
-            <div className="p-5 grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1">
-                <p className="font-semibold">{(order as any).customer_name || t('admin.customer')}</p>
-                <p className="text-xs text-muted-foreground">📍 {order.shipping_address}</p>
-                {order.phone && <p className="text-xs text-muted-foreground">📞 {order.phone}</p>}
-                {(order as any).payment_txn_id && (
-                  <p className="text-xs font-mono bg-muted px-2 py-0.5 rounded inline-block">Txn: {(order as any).payment_txn_id}</p>
-                )}
-                {(order as any).payment_screenshot_url && (
-                  <div className="mt-2">
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <button className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs font-bold text-primary hover:bg-primary/10 transition-colors">
-                          <ExternalLink className="h-3 w-3" /> {t('admin.view_payment_screenshot') || "View Receipt Screenshot"}
-                        </button>
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-2xl">
-                        <DialogHeader>
-                          <DialogTitle>{t('admin.payment_receipt') || "Payment Receipt"} - {orderNum}</DialogTitle>
-                        </DialogHeader>
-                        <div className="mt-4 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border bg-muted/30 p-4">
-                          <img
-                            src={(order as any).payment_screenshot_url}
-                            alt="Payment Screenshot"
-                            className="max-h-[70vh] w-full rounded-lg object-contain shadow-premium"
-                          />
-                          <a
-                            href={(order as any).payment_screenshot_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="mt-4 flex items-center gap-2 text-sm text-primary underline"
-                          >
-                            <ExternalLink className="h-4 w-4" /> {t('admin.open_full_image') || "Open full image in new tab"}
-                          </a>
+          return (
+            <div key={order.id} className="group rounded-xl border border-border bg-card shadow-premium hover:shadow-xl transition-all duration-300 overflow-hidden">
+              {/* Header - Always Visible */}
+              <div className={cn("p-1 transition-colors", isExpanded ? style.bg : "bg-card")}>
+                <div className="flex items-center justify-between gap-4 px-4 py-3">
+                  <div className="flex flex-1 items-center gap-3 min-w-0" onClick={() => toggleOrder(order.id)} role="button">
+                    <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl transition-all", style.bg, style.text)}>
+                      {order.status === "delivered" ? <CheckCircle className="h-5 w-5" /> : 
+                       order.status === "shipped" ? <Truck className="h-5 w-5" /> :
+                       <ShoppingBag className="h-5 w-5" />}
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm tracking-tight truncate">{orderNum}</span>
+                        <span className={cn("rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-widest border",
+                          payStatus === "verified" ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
+                          payStatus === "failed" ? "bg-rose-50 text-rose-700 border-rose-100" :
+                          "bg-amber-50 text-amber-700 border-amber-100"
+                        )}>
+                          {payStatus === "verified" ? "Verified" : payStatus}
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-bold text-muted-foreground flex items-center gap-1">
+                        {new Date(order.created_at).toLocaleDateString(i18n.language, { day: "numeric", month: "short", hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Desktop Price & Actions */}
+                  <div className="flex items-center gap-4">
+                    <div className="hidden sm:flex flex-col items-end">
+                      <span className="font-black text-primary leading-none">₹{safeFormat(order.total)}</span>
+                      <span className="text-[9px] font-bold uppercase text-muted-foreground">{order.order_items?.length} Items</span>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      {order.status === "shipped" && !isExpanded && (
+                        <Button 
+                          size="sm" 
+                          onClick={(e) => { e.stopPropagation(); updateStatus(order.id, "delivered"); }}
+                          className="h-8 bg-emerald-600 hover:bg-emerald-700 text-xs font-bold gap-1 shadow-lg shadow-emerald-600/20"
+                        >
+                          🎉 Delivered
+                        </Button>
+                      )}
+                      <button 
+                        onClick={() => toggleOrder(order.id)}
+                        className={cn("h-8 w-8 rounded-full flex items-center justify-center transition-all hover:bg-muted", isExpanded && "rotate-180 bg-muted")}
+                      >
+                        <ChevronDown className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Collapsible Details */}
+              <motion.div 
+                initial={false}
+                animate={{ height: isExpanded ? "auto" : 0, opacity: isExpanded ? 1 : 0 }}
+                transition={{ duration: 0.3, ease: "easeInOut" }}
+                className="overflow-hidden bg-muted/20"
+              >
+                <div className="p-5 border-t border-border/50">
+                  <div className="grid gap-6 md:grid-cols-2">
+                    {/* Customer Info */}
+                    <div className="space-y-4">
+                      <div>
+                        <h4 className="text-[10px] font-black uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1">
+                          <Users className="h-3 w-3" /> Customer Details
+                        </h4>
+                        <div className="p-3 rounded-xl bg-card border shadow-sm space-y-2">
+                          <p className="font-bold text-sm">{(order as any).customer_name || t('admin.customer')}</p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Truck className="h-3 w-3" />
+                            <span className="whitespace-pre-wrap">{order.shipping_address}</span>
+                          </div>
+                          {order.phone && (
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <Smartphone className="h-3 w-3" />
+                              <a href={`tel:${order.phone}`} className="hover:text-primary transition-colors">{order.phone}</a>
+                            </div>
+                          )}
                         </div>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
-                )}
-                <p className="font-bold text-lg text-primary">₹{safeFormat(order.total)}</p>
-              </div>
+                      </div>
 
-              {/* Items */}
-              <div className="flex flex-wrap gap-1.5">
-                {(order.order_items as any[])?.map((item: any) => (
-                  <div key={item.id} className="flex items-center gap-1.5 rounded-lg bg-muted px-2.5 py-1.5 text-xs">
-                    <img src={item.products?.image_url || getSmartFallback(item.products?.name, item.products?.slug)} alt="" className="h-7 w-7 rounded object-cover" />
-                    <span className="font-medium">{item.products?.name} {item.variant_name && `(${item.variant_name})`} ×{item.quantity}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <h4 className="text-[10px] font-black uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1">
+                            <CreditCard className="h-3 w-3" /> Transaction
+                          </h4>
+                          <div className="p-3 rounded-xl bg-card border shadow-sm">
+                            <p className="text-[10px] font-mono leading-relaxed truncate">{(order as any).payment_txn_id || 'N/A'}</p>
+                            {(order as any).payment_screenshot_url && (
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <button className="mt-2 w-full flex items-center justify-center gap-2 rounded-lg border border-primary/20 bg-primary/5 py-2 text-[10px] font-bold text-primary hover:bg-primary/10 transition-colors">
+                                    <ExternalLink className="h-3 w-3" /> View Screenshot
+                                  </button>
+                                </DialogTrigger>
+                                <DialogContent className="sm:max-w-2xl">
+                                  <DialogHeader>
+                                    <DialogTitle>{t('admin.payment_receipt')} - {orderNum}</DialogTitle>
+                                  </DialogHeader>
+                                  <div className="mt-4 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border bg-muted/30 p-4">
+                                    <img src={(order as any).payment_screenshot_url} alt="Payment" className="max-h-[70vh] w-full rounded-lg object-contain shadow-premium" />
+                                    <a href={(order as any).payment_screenshot_url} target="_blank" rel="noreferrer" className="mt-4 flex items-center gap-1 text-xs text-primary underline">
+                                      <ExternalLink className="h-3 w-3" /> {t('admin.open_full_image')}
+                                    </a>
+                                  </div>
+                                </DialogContent>
+                              </Dialog>
+                            )}
+                          </div>
+                        </div>
+                        <div>
+                          <h4 className="text-[10px] font-black uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1">
+                            <Package className="h-3 w-3" /> Order Items
+                          </h4>
+                          <div className="p-3 rounded-xl bg-card border shadow-sm space-y-2">
+                            {(order.order_items as any[])?.map((item: any) => (
+                              <div key={item.id} className="flex items-center gap-2 text-[10px]">
+                                <img src={item.products?.image_url || getSmartFallback(item.products?.name, item.products?.slug)} className="h-6 w-6 rounded border object-cover" />
+                                <div className="min-w-0">
+                                  <p className="font-bold truncate">{item.products?.name}</p>
+                                  <p className="text-muted-foreground">{item.variant_name} × {item.quantity}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
 
-            {/* Actions */}
-            <div className="flex flex-wrap items-center gap-3 border-t bg-muted/30 px-5 py-3">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span>{t('admin.status')}:</span>
-                <Select value={order.status} onValueChange={v => updateStatus(order.id, v)}>
-                  <SelectTrigger className="h-8 w-36 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending">🕐 {t('admin.pipeline.pending')}</SelectItem>
-                    <SelectItem value="confirmed">✅ {t('admin.pipeline.confirmed')}</SelectItem>
-                    <SelectItem value="shipped">🚚 {t('admin.pipeline.shipped')}</SelectItem>
-                    <SelectItem value="delivered">🎉 {t('admin.pipeline.delivered')}</SelectItem>
-                    <SelectItem value="cancelled">❌ {t('admin.pipeline.cancelled')}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span>{t('admin.payment')}:</span>
-                <Select value={payStatus} onValueChange={v => updatePayment(order.id, v)}>
-                  <SelectTrigger className="h-8 w-32 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending">{t('admin.payment_status.pending')}</SelectItem>
-                    <SelectItem value="verified">✅ {t('admin.payment_status.verified')}</SelectItem>
-                    <SelectItem value="failed">❌ {t('admin.payment_status.failed')}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {/* Quick next-step button */}
-              {order.status === "pending" && (
-                <button onClick={() => updateStatus(order.id, "confirmed")}
-                  className="ml-auto rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700 transition-colors">
-                  ✅ {t('admin.confirm_order')}
-                </button>
-              )}
-              {order.status === "confirmed" && (
-                <button onClick={() => updateStatus(order.id, "shipped")}
-                  className="ml-auto rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-violet-700 transition-colors">
-                  🚚 {t('admin.mark_shipped')}
-                </button>
-              )}
-              {order.status === "shipped" && (
-                <button onClick={() => updateStatus(order.id, "delivered")}
-                  className="ml-auto rounded-lg bg-green-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-green-700 transition-colors">
-                  🎉 {t('admin.mark_delivered')}
-                </button>
-              )}
+                    {/* Quick Management */}
+                    <div className="space-y-4">
+                      <h4 className="text-[10px] font-black uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1">
+                        <Settings className="h-3 w-3" /> Quick Manager
+                      </h4>
+                      <div className="grid gap-3 p-4 rounded-xl bg-card border shadow-sm">
+                        <div className="space-y-2">
+                          <Label className="text-[10px] font-bold uppercase">{t('admin.status')}</Label>
+                          <Select value={order.status} onValueChange={v => updateStatus(order.id, v)}>
+                            <SelectTrigger className="h-10 text-xs font-bold ring-offset-background focus:ring-2 focus:ring-primary"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="pending">🕐 {t('admin.pipeline.pending')}</SelectItem>
+                              <SelectItem value="confirmed">✅ {t('admin.pipeline.confirmed')}</SelectItem>
+                              <SelectItem value="shipped">🚚 {t('admin.pipeline.shipped')}</SelectItem>
+                              <SelectItem value="delivered">🎉 {t('admin.pipeline.delivered')}</SelectItem>
+                              <SelectItem value="cancelled">❌ {t('admin.pipeline.cancelled')}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-[10px] font-bold uppercase">{t('admin.payment')}</Label>
+                          <Select value={payStatus} onValueChange={v => updatePayment(order.id, v)}>
+                            <SelectTrigger className="h-10 text-xs font-bold ring-offset-background focus:ring-2 focus:ring-primary"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="pending">🕐 {t('admin.payment_status.pending')}</SelectItem>
+                              <SelectItem value="verified">✅ {t('admin.payment_status.verified')}</SelectItem>
+                              <SelectItem value="failed">❌ {t('admin.payment_status.failed')}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="pt-2 border-t">
+                          {order.status === "pending" && (
+                            <Button onClick={() => updateStatus(order.id, "confirmed")} className="w-full bg-blue-600 hover:bg-blue-700 font-bold text-xs uppercase tracking-tighter shadow-lg shadow-blue-500/20">
+                              ✅ {t('admin.confirm_order')}
+                            </Button>
+                          )}
+                          {order.status === "confirmed" && (
+                            <Button onClick={() => updateStatus(order.id, "shipped")} className="w-full bg-violet-600 hover:bg-violet-700 font-bold text-xs uppercase tracking-tighter shadow-lg shadow-violet-500/20">
+                              🚚 {t('admin.mark_shipped')}
+                            </Button>
+                          )}
+                          {order.status === "shipped" && (
+                            <Button onClick={() => updateStatus(order.id, "delivered")} className="w-full bg-emerald-600 hover:bg-emerald-700 font-bold text-xs uppercase tracking-tighter shadow-lg shadow-emerald-500/20">
+                              🎉 {t('admin.mark_delivered')}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
+
       {filtered?.length === 0 && (
-        <div className="py-16 text-center text-muted-foreground">
-          <ShoppingBag className="mx-auto mb-3 h-10 w-10 opacity-20" />
-          <p>{t('admin.no_orders', { filter: filter === "all" ? "" : t(`admin.pipeline.${filter}`) })}</p>
+        <div className="py-20 flex flex-col items-center justify-center text-muted-foreground bg-muted/20 rounded-3xl border-2 border-dashed border-border/50">
+          <ShoppingBag className="mb-4 h-12 w-12 opacity-10 animate-bounce" />
+          <p className="font-bold text-sm">{t('admin.no_orders', { filter: filter === "all" ? "" : t(`admin.pipeline.${filter}`) })}</p>
         </div>
       )}
     </div>

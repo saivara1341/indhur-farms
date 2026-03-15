@@ -25,10 +25,11 @@ interface ProductCardProps {
     unit: string | null;
     variants?: any[];
   };
+  showAllVariants?: boolean;
 }
 
 // ── Component ─────────────────────────────────────────────────
-const ProductCard = ({ product }: ProductCardProps) => {
+const ProductCard = ({ product, showAllVariants = false }: ProductCardProps) => {
   const { t } = useTranslation();
   const { items, addToCart, updateQuantity } = useCart();
 
@@ -86,30 +87,54 @@ const ProductCard = ({ product }: ProductCardProps) => {
               {t("products.quantity_label", "Available Weights:")}
             </span>
             {sortedVariants.length > 0 ? (
-              <div onClick={(e) => e.preventDefault()}>
-                <Select
-                  value={selectedVariantId}
-                  onValueChange={(value) => setSelectedVariantId(value)}
-                >
-                  <SelectTrigger className="w-full h-9 rounded-xl border-primary/20 bg-background hover:border-primary/50 transition-colors text-xs font-bold shadow-sm">
-                    <SelectValue placeholder={t("products.select_option", "Select Option")} />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl border border-primary/10 shadow-premium">
-                    {sortedVariants.map((v) => (
-                      <SelectItem
-                        key={v.id}
-                        value={v.id}
-                        className="text-xs focus:bg-primary/10 focus:text-primary rounded-lg cursor-pointer py-2"
-                      >
-                        <div className="flex items-center justify-between w-full min-w-[140px] gap-4">
-                          <span className="font-bold">{v.unit}</span>
-                          <span className="text-secondary font-black">₹{v.price}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              showAllVariants ? (
+                /* Landing Page Mode: Show all buttons */
+                <div className="grid grid-cols-2 gap-2" onClick={(e) => e.preventDefault()}>
+                  {sortedVariants.map((v) => (
+                    <button
+                      key={v.id}
+                      onClick={() => setSelectedVariantId(v.id)}
+                      className={cn(
+                        "flex flex-col items-center justify-center rounded-xl p-2 transition-all border-2",
+                        selectedVariantId === v.id 
+                          ? "border-primary bg-primary/10 shadow-sm" 
+                          : "border-transparent bg-muted/50 hover:bg-muted text-muted-foreground"
+                      )}
+                    >
+                      <span className={cn("text-[10px] font-black", selectedVariantId === v.id ? "text-primary" : "")}>{v.unit}</span>
+                      <span className={cn("text-[9px] font-bold opacity-70", selectedVariantId === v.id ? "text-primary" : "")}>₹{v.price}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                /* Regular Mode: Dropdown */
+                <div onClick={(e) => e.preventDefault()}>
+                  <Select
+                    value={selectedVariantId}
+                    onValueChange={(value) => setSelectedVariantId(value)}
+                  >
+                    <SelectTrigger className="w-full h-9 rounded-xl border-primary/20 bg-background hover:border-primary/50 transition-colors text-xs font-bold shadow-sm focus:ring-primary/20">
+                      <SelectValue>
+                        {selectedVariant.unit}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border border-primary/10 shadow-premium">
+                      {sortedVariants.map((v) => (
+                        <SelectItem
+                          key={v.id}
+                          value={v.id}
+                          className="text-xs focus:bg-primary/10 focus:text-primary rounded-lg cursor-pointer py-2"
+                        >
+                          <div className="flex items-center justify-between w-full min-w-[140px] gap-4">
+                            <span className="font-bold">{v.unit}</span>
+                            <span className="text-secondary font-black">₹{v.price}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )
             ) : product.unit ? (
               <div className="flex flex-wrap gap-1.5">
                 <div className="group relative flex min-w-[50px] flex-col items-center justify-center rounded-xl border border-primary bg-primary/10 py-1.5 shadow-sm ring-1 ring-primary/20">

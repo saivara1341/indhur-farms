@@ -118,8 +118,8 @@
   },
   "checkout": {
     "title": "చెకౌట్",
-    "back_to_cart": "కార్ట్‌కు తిరిగి వెళ్ళు",
-    "change_delivery_details": "డెలివరీ వివరాలను మార్చు",
+    "back_to_cart": "వెనుకకు",
+    "change_delivery_details": "మార్చండి",
     "delivery_details": "డెలివరీ వివరాలు",
     "full_name": "పూర్తి పేరు",
     "phone": "ఫోన్ నంబర్",

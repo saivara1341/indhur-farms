@@ -102,7 +102,9 @@ const ProductDetail = () => {
                 onValueChange={(value) => setSelectedVariantId(value)}
               >
                 <SelectTrigger className="w-full md:w-[320px] h-14 rounded-2xl border-2 border-primary/30 bg-background shadow-premium focus:ring-primary/20 transition-all hover:border-primary">
-                  <SelectValue placeholder={t('product_detail.choose_variant')} />
+                  <SelectValue placeholder={t('product_detail.choose_variant')}>
+                    {selectedVariant?.unit}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent className="rounded-2xl border-2 border-primary/10 shadow-premium backdrop-blur-md">
                   {variants.map((v: any) => (
