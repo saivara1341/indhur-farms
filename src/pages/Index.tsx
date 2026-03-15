@@ -233,7 +233,7 @@ const Index = () => {
       <ReviewCarousel />
 
       {/* Farm Preview */}
-      <section className="py-20 bg-background overflow-hidden relative">
+      <section id="farm-to-table" className="py-20 bg-background overflow-hidden relative">
         <div className="container mx-auto px-4">
           <div className="relative h-[400px] w-full max-w-5xl mx-auto rounded-3xl overflow-hidden shadow-2xl group border border-primary/10">
             <img

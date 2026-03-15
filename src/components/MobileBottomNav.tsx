@@ -20,15 +20,25 @@ const MobileBottomNav = () => {
       return;
     }
 
+    const section = document.getElementById("farm-to-table");
+    if (!section) return;
+
+    const sectionTop = section.offsetTop;
+    const triggerPoint = sectionTop - 100; // Trigger slightly before the section
+
     const previous = scrollY.getPrevious();
     const diff = latest - (previous || 0);
 
-    // Hide if scrolling down > 50px, Show if scrolling up
-    if (latest > 50 && diff > 5) {
+    // Collapse only when reaching the Farm to Table section or below
+    if (latest >= triggerPoint && diff > 5) {
       if (!isCollapsed && !manualExpand) setIsCollapsed(true);
-    } else if (diff < -5 || latest < 50) {
-      setIsCollapsed(false);
-      setManualExpand(false);
+    } 
+    // Expand when scrolling up PAST the Farm to Table section
+    else if (latest < triggerPoint || diff < -5) {
+      if (isCollapsed || manualExpand) {
+        setIsCollapsed(false);
+        if (latest < triggerPoint) setManualExpand(false);
+      }
     }
   });
 
@@ -41,15 +51,18 @@ const MobileBottomNav = () => {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden pb-safe flex justify-center">
+    <nav className={cn(
+      "fixed bottom-0 left-0 right-0 z-50 md:hidden pb-safe flex px-6",
+      isCollapsed ? "justify-start" : "justify-center"
+    )}>
       <AnimatePresence mode="wait">
         {isCollapsed ? (
           <motion.div
             key="collapsed"
-            initial={{ opacity: 0, y: 20, scale: 0.8 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.8 }}
-            className="mb-6 flex items-center gap-2 rounded-full border border-white/20 bg-white/70 px-2 py-2 shadow-2xl backdrop-blur-xl dark:bg-black/70"
+            initial={{ opacity: 0, x: -50, scale: 0.8 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: -50, scale: 0.8 }}
+            className="mb-8 flex items-center gap-2 rounded-full border border-white/20 bg-white/70 px-2 py-2 shadow-2xl backdrop-blur-xl dark:bg-black/70"
           >
             <Link
               to="/"
@@ -66,9 +79,9 @@ const MobileBottomNav = () => {
                 setManualExpand(true);
                 setIsCollapsed(false);
               }}
-              className="flex h-12 w-12 items-center justify-center rounded-full bg-white/50 text-primary hover:bg-white"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-white/50 text-primary hover:bg-white"
             >
-              <ChevronRight className="h-6 w-6" />
+              <ChevronRight className="h-5 w-5 rotate-180" />
             </button>
           </motion.div>
         ) : (
