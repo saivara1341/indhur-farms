@@ -93,15 +93,15 @@ const ProductDetail = () => {
           </h1>
 
           {variants.length > 0 && (
-            <div className="mt-8 space-y-3">
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                {t('product_detail.choose_variant', 'Select Quantity')}
+            <div className="mt-8 space-y-4">
+              <label className="text-[10px] font-black uppercase tracking-[0.2em] text-primary bg-primary/5 px-3 py-1 rounded-full border border-primary/10">
+                {t('product_detail.choose_variant', '1. Select Weight (Quantity)')}
               </label>
               <Select
                 value={selectedVariantId || variants[0]?.id}
                 onValueChange={(value) => setSelectedVariantId(value)}
               >
-                <SelectTrigger className="w-full md:w-[300px] h-14 rounded-2xl border-2 border-primary/20 bg-background/50 backdrop-blur-sm shadow-premium focus:ring-primary/20 transition-all hover:border-primary/40">
+                <SelectTrigger className="w-full md:w-[320px] h-14 rounded-2xl border-2 border-primary/30 bg-background shadow-premium focus:ring-primary/20 transition-all hover:border-primary">
                   <SelectValue placeholder={t('product_detail.choose_variant')} />
                 </SelectTrigger>
                 <SelectContent className="rounded-2xl border-2 border-primary/10 shadow-premium backdrop-blur-md">
@@ -141,8 +141,11 @@ const ProductDetail = () => {
             </Button>
           </div>
 
-          <div className="mt-6 rounded-lg bg-muted p-4 text-sm text-muted-foreground">
-            <p>✅ {product.stock > 0 ? `${t('product_detail.in_stock')} (${product.stock} ${t('product_detail.available')})` : t('products.out_of_stock')}</p>
+          <div className="mt-6 rounded-lg bg-muted p-4 text-sm text-muted-foreground border border-border/50 shadow-sm">
+            <p className="flex items-center gap-2">
+              <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span className="font-semibold text-emerald-600 dark:text-emerald-400">Available to Order</span>
+            </p>
           </div>
         </div>
       </div>
