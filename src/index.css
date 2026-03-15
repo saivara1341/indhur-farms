@@ -167,6 +167,10 @@
   .express-badge {
     @apply bg-secondary text-secondary-foreground text-[10px] font-black uppercase tracking-tighter px-2 py-0.5 rounded-sm shadow-sm flex items-center gap-0.5 italic;
   }
+
+  .pb-nav {
+    @apply pb-24 md:pb-0;
+  }
 }
 
 /* Hide number input spinners globally */

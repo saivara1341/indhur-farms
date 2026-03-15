@@ -7,6 +7,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { CartProvider } from "@/hooks/useCart";
 import ScrollToTop from "@/components/ScrollToTop";
 import Navbar from "@/components/Navbar";
+import MobileBottomNav from "@/components/MobileBottomNav";
 import Footer from "@/components/Footer";
 import Index from "./pages/Index";
 import Products from "./pages/Products";
@@ -35,7 +36,7 @@ const App = () => (
           <CartProvider>
             <div className="flex min-h-screen flex-col">
               <Navbar />
-              <div className="flex-1">
+              <div className="flex-1 pb-nav">
                 <Routes>
                   <Route path="/" element={<Index />} />
                   <Route path="/products" element={<Products />} />
@@ -52,6 +53,7 @@ const App = () => (
                 </Routes>
               </div>
               <Footer />
+              <MobileBottomNav />
             </div>
           </CartProvider>
         </AuthProvider>
