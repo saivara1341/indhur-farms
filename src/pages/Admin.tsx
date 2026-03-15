@@ -126,7 +126,7 @@ const Admin = () => {
     { id: "categories", label: t('admin.categories'), icon: ListTree },
     { id: "orders", label: t('admin.orders'), icon: ShoppingBag, badge: (pendingCount || 0) > 0 ? pendingCount : null, badgeColor: "bg-red-500" },
     { id: "delivery", label: t('admin.logistics'), icon: Truck },
-    { id: "reviews", label: "User Reviews", icon: MessageSquare },
+    { id: "reviews", label: t('admin.reviews', 'User Reviews'), icon: MessageSquare },
     { id: "records", label: t('admin.records'), icon: ClipboardList },
     { id: "settings", label: t('admin.settings'), icon: Settings },
   ];
@@ -177,7 +177,7 @@ const Admin = () => {
             >
               <item.icon className="h-5 w-5 shrink-0" />
               <span className={cn("text-[10px] font-bold uppercase tracking-tighter whitespace-nowrap transition-all", activeTab === item.id ? "block" : "hidden sm:block")}>
-                {item.id === 'dashboard' ? 'Home' : item.label.split(' ')[0]}
+                {item.id === 'dashboard' ? t('nav.home', 'Home') : item.label.split(' ')[0]}
               </span>
               {(item as any).badge && (
                 <span className={`absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full text-[8px] font-bold text-white ${(item as any).badgeColor}`}>
@@ -197,7 +197,7 @@ const Admin = () => {
           >
             <Settings className="h-5 w-5 shrink-0" />
             <span className={cn("text-[10px] font-bold uppercase tracking-tighter whitespace-nowrap transition-all", activeTab === 'settings' ? "block" : "hidden sm:block")}>
-              Settings
+              {t('admin.settings', 'Settings')}
             </span>
           </button>
         </div>
@@ -1598,7 +1598,7 @@ const SettingsTab = () => {
           <Card className="border-none shadow-none bg-transparent">
             <CardHeader className="px-0 pt-0">
               <CardTitle className="text-xl">{t('admin.settings_config.profile_settings')}</CardTitle>
-              <CardDescription>Update your public profile information</CardDescription>
+              <CardDescription>{t('admin.settings_config.profile_desc', 'Update your public profile information')}</CardDescription>
             </CardHeader>
             <CardContent className="px-0">
               <form onSubmit={handleSaveProfile} className="space-y-6">
@@ -1607,7 +1607,7 @@ const SettingsTab = () => {
                   <Input value={profileForm.full_name} onChange={e => setProfileForm(f => ({ ...f, full_name: e.target.value }))} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Avatar URL</Label>
+                  <Label>{t('admin.upload_pi', 'Upload Pi')}</Label>
                   <Input value={profileForm.avatar_url} onChange={e => setProfileForm(f => ({ ...f, avatar_url: e.target.value }))} />
                 </div>
                 <Button type="submit" disabled={loading} className="w-full sm:w-auto">
@@ -1621,7 +1621,7 @@ const SettingsTab = () => {
           <Card className="border-none shadow-none bg-transparent">
             <CardHeader className="px-0 pt-0">
               <CardTitle className="text-xl">{t('admin.settings_config.payment_settings')}</CardTitle>
-              <CardDescription>Configure payment details and QR codes</CardDescription>
+              <CardDescription>{t('admin.settings_config.payment_desc', 'Configure payment details and QR codes')}</CardDescription>
             </CardHeader>
             <CardContent className="px-0">
               <form onSubmit={handleSavePayments} className="space-y-6">
@@ -1656,8 +1656,8 @@ const SettingsTab = () => {
                         <label className="flex h-full w-full flex-col items-center justify-center cursor-pointer hover:bg-primary/10 transition-colors gap-2">
                           {uploadingQR ? <Loader2 className="h-8 w-8 animate-spin text-primary" /> : <UploadCloud className="h-8 w-8 text-primary" />}
                           <div className="text-center">
-                            <p className="text-xs font-bold text-primary uppercase">Upload QR Code</p>
-                            <p className="text-[9px] text-muted-foreground uppercase">PNG, JPG up to 5MB</p>
+                            <p className="text-xs font-bold text-primary uppercase">{t('admin.settings_config.upload_qr', 'Upload QR Code')}</p>
+                            <p className="text-[9px] text-muted-foreground uppercase">{t('admin.settings_config.qr_formats', 'PNG, JPG up to 5MB')}</p>
                           </div>
                           <input type="file" accept="image/*" className="hidden" onChange={handleQRUpload} disabled={uploadingQR} />
                         </label>
@@ -1880,13 +1880,25 @@ const RecordsTab = () => {
     type: "note", 
     content: "",
     customer_name: "",
+    customer_phone: "",
     total_amount: "",
     items: "",
     tracking_id: "",
     courier_name: "",
     delivery_status: "pending",
+    shipping_qty: "",
+    shipping_unit: "kg",
+    product_cost: "",
     custom_type: "",
     order_items: [{ productId: "", name: "", price: 0, quantity: 1, custom: false }]
+  });
+
+  const { data: allProducts } = useQuery({
+    queryKey: ["admin-products-list"],
+    queryFn: async () => {
+      const { data } = await supabase.from("products" as any).select("id, name, price, stock, unit");
+      return data || [];
+    }
   });
 
   const { data: records, isLoading } = useQuery({
@@ -1911,7 +1923,13 @@ const RecordsTab = () => {
       if (form.type === 'order') {
         finalContent = JSON.stringify({
           customer: form.customer_name,
+          phone: form.customer_phone,
           amount: form.total_amount || form.order_items.reduce((acc, item) => acc + (item.price * item.quantity), 0),
+          product_cost: form.product_cost,
+          shipping: {
+            qty: form.shipping_qty,
+            unit: form.shipping_unit
+          },
           items: form.order_items,
           notes: form.content
         });
@@ -1933,11 +1951,12 @@ const RecordsTab = () => {
       const { error } = await (supabase.from("admin_records" as any).insert([submission] as any) as any);
       if (error) throw error;
       
-      toast({ title: "✅ Record added successfully" });
+      toast({ title: t('admin.record_added', "✅ Record added successfully") });
       setForm({ 
         title: "", type: "note", content: "", 
-        customer_name: "", total_amount: "", items: "",
+        customer_name: "", customer_phone: "", total_amount: "", items: "",
         tracking_id: "", courier_name: "", delivery_status: "pending",
+        shipping_qty: "", shipping_unit: "kg", product_cost: "",
         custom_type: "",
         order_items: [{ productId: "", name: "", price: 0, quantity: 1, custom: false }]
       });
@@ -1998,7 +2017,7 @@ const RecordsTab = () => {
           <h2 className="font-display text-2xl font-bold flex items-center gap-2">
             <ClipboardList className="h-6 w-6 text-primary" /> {t('admin.records_title')}
           </h2>
-          <p className="text-sm text-muted-foreground mt-1">{t('admin.records_desc')}</p>
+          <p className="text-sm text-muted-foreground mt-1">{t('admin.records_desc', 'Internal business ledger & manual tracking')}</p>
         </div>
         <div className="flex gap-2">
           <Button onClick={() => setShowForm(!showForm)} className="gap-2 shadow-lg shadow-primary/20 transition-all hover:scale-105 active:scale-95">
@@ -2035,8 +2054,8 @@ const RecordsTab = () => {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="newest">Newest First</SelectItem>
-              <SelectItem value="oldest">Oldest First</SelectItem>
+              <SelectItem value="newest">{t('common.sort_newest', 'Newest First')}</SelectItem>
+              <SelectItem value="oldest">{t('common.sort_oldest', 'Oldest First')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -2097,12 +2116,30 @@ const RecordsTab = () => {
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div className="space-y-2">
-                        <Label className="text-xs font-bold text-blue-700">{t('admin.record_customer')}</Label>
+                        <Label className="text-xs font-bold text-blue-700">{t('admin.record_customer', 'Customer Name')}</Label>
                         <Input value={form.customer_name} onChange={e => setForm(f => ({ ...f, customer_name: e.target.value }))} className="bg-white" />
                       </div>
                       <div className="space-y-2">
-                        <Label className="text-xs font-bold text-blue-700">{t('admin.record_amount')} (Manual Overide)</Label>
-                        <Input type="number" value={form.total_amount} onChange={e => setForm(f => ({ ...f, total_amount: e.target.value }))} className="bg-white" placeholder="Auto-calc if empty" />
+                        <Label className="text-xs font-bold text-blue-700">{t('admin.record_phone', 'Mobile Number')}</Label>
+                        <Input value={form.customer_phone} onChange={e => setForm(f => ({ ...f, customer_phone: e.target.value }))} className="bg-white" placeholder="e.g. +91 9876543210" />
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-3">
+                      <div className="space-y-2">
+                        <Label className="text-xs font-bold text-blue-700">{t('admin.product_cost', 'Product Cost')}</Label>
+                        <Input type="number" value={form.product_cost} onChange={e => setForm(f => ({ ...f, product_cost: e.target.value }))} className="bg-white" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs font-bold text-blue-700">{t('admin.shipping_details', 'Shipping Qty & Unit')}</Label>
+                        <div className="flex gap-1">
+                          <Input type="number" value={form.shipping_qty} onChange={e => setForm(f => ({ ...f, shipping_qty: e.target.value }))} className="bg-white w-20" placeholder="Qty" />
+                          <Input value={form.shipping_unit} onChange={e => setForm(f => ({ ...f, shipping_unit: e.target.value }))} className="bg-white flex-1" placeholder="kg/unit" />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs font-bold text-blue-700">{t('admin.total_amount', 'Total Cost')}</Label>
+                        <Input type="number" value={form.total_amount} onChange={e => setForm(f => ({ ...f, total_amount: e.target.value }))} className="bg-white" placeholder="Final Amount" />
                       </div>
                     </div>
                     
@@ -2157,9 +2194,9 @@ const RecordsTab = () => {
                                   <SelectTrigger className="h-8 text-xs bg-muted/20">
                                     <SelectValue placeholder="Select Product" />
                                   </SelectTrigger>
-                                  <SelectContent>
+                                   <SelectContent>
                                     <SelectItem value="custom">➕ {t('admin.delivery.other_custom')}</SelectItem>
-                                    {((queryClient.getQueryData(['admin-products']) as any[]) || []).map(p => (
+                                    {(allProducts || []).map(p => (
                                       <SelectItem key={p.id} value={p.id}>{p.name} (₹{p.price})</SelectItem>
                                     ))}
                                   </SelectContent>
@@ -2329,11 +2366,19 @@ const RecordsTab = () => {
                             <div className="bg-blue-50 p-2 rounded-lg border border-blue-100">
                               <p className="text-blue-700 font-bold uppercase text-[9px] mb-1">{t('admin.record_customer')}</p>
                               <p className="font-medium truncate">{data.customer || 'N/A'}</p>
+                              {data.phone && <p className="text-[10px] text-muted-foreground">{data.phone}</p>}
                             </div>
                             <div className="bg-blue-50 p-2 rounded-lg border border-blue-100">
                               <p className="text-blue-700 font-bold uppercase text-[9px] mb-1">{t('admin.record_amount')}</p>
                               <p className="font-bold text-blue-800">₹{data.amount || '0'}</p>
+                              {data.product_cost && <p className="text-[10px] text-muted-foreground">Cost: ₹{data.product_cost}</p>}
                             </div>
+                            {data.shipping && (data.shipping.qty || data.shipping.unit) && (
+                              <div className="col-span-2 bg-blue-50/50 p-2 rounded-lg border border-blue-100 flex justify-between items-center">
+                                <span className="text-blue-700 font-bold uppercase text-[9px]">Shipping Details</span>
+                                <span className="text-xs font-medium">{data.shipping.qty} {data.shipping.unit}</span>
+                              </div>
+                            )}
                             {data.items && Array.isArray(data.items) && (
                               <div className="col-span-2 bg-muted/30 p-2 rounded-lg border divide-y divide-border/50">
                                 <p className="text-muted-foreground font-bold uppercase text-[9px] mb-1">{t('admin.record_items')}</p>

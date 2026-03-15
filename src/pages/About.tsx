@@ -20,16 +20,16 @@ const About = () => {
               </div>
               <div className="space-y-6">
                 <h2 className="font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl relative inline-block">
-                  G.Sanjana reddy
-                  <span className="block text-sm font-medium text-primary uppercase tracking-[0.2em] mt-1">Founder</span>
+                  {t("index.founder.name", "G.Sanjana reddy")}
+                  <span className="block text-sm font-medium text-primary uppercase tracking-[0.2em] mt-1">{t("index.founder.title", "Founder")}</span>
                   <span className="absolute -bottom-2 left-0 h-1.5 w-1/3 rounded-full bg-primary" />
                 </h2>
                 <div className="space-y-4 text-lg leading-relaxed text-muted-foreground">
                   <p>
-                    Our farm is started with a simple goal — to connect farmers directly with consumers. I am a recent B.Tech graduate who believes in bringing farm products straight from the field to your home without mediators.
+                    {t("index.founder.bio1", "Our farm is started with a simple goal — to connect farmers directly with consumers. I am a recent B.Tech graduate who believes in bringing farm products straight from the field to your home without mediators.")}
                   </p>
                   <p>
-                    Through our farm, we grow and share products like turmeric and other crops, and we also welcome visitors who want to learn about farming and experience the journey of food from soil to table.
+                    {t("index.founder.bio2", "Through our farm, we grow and share products like turmeric and other crops, and we also welcome visitors who want to learn about farming and experience the journey of food from soil to table.")}
                   </p>
                 </div>
               </div>
@@ -89,7 +89,7 @@ const About = () => {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 rounded-full bg-secondary px-6 py-3 font-semibold text-secondary-foreground transition-colors hover:bg-secondary/90"
             >
-              <Phone className="h-4 w-4" /> WhatsApp: 9030854213
+              <Phone className="h-4 w-4" /> {t("cta.whatsapp", "WhatsApp")}: 9030854213
             </a>
           </div>
           <p className="mt-4 text-sm text-muted-foreground">{t("about.worldwide_delivery")}</p>

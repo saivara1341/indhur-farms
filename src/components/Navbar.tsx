@@ -68,7 +68,7 @@ const Navbar = () => {
   const { toast } = useToast();
 
   const [draft, setDraft] = useState({
-    avatar_url: "",
+    upload_pi: "",
     instagram_handles: [] as string[],
     whatsapp_numbers: [] as string[],
     gmail_addresses: [] as string[],
@@ -77,7 +77,7 @@ const Navbar = () => {
   useEffect(() => {
     if (profile && editMode) {
       setDraft({
-        avatar_url: profile.avatar_url || "",
+        upload_pi: profile.avatar_url || "",
         instagram_handles: [...(profile.instagram_handles || [])],
         whatsapp_numbers: [...(profile.whatsapp_numbers || [])],
         gmail_addresses: [...(profile.gmail_addresses || [])],
@@ -102,7 +102,7 @@ const Navbar = () => {
 
   const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User";
   const avatarLetter = displayName.charAt(0).toUpperCase();
-  const avatarSrc = (editMode ? draft.avatar_url : profile?.avatar_url) || user?.user_metadata?.avatar_url || "";
+  const avatarSrc = (editMode ? draft.upload_pi : profile?.avatar_url) || user?.user_metadata?.avatar_url || "";
 
   // ── Upload profile photo to Supabase storage ──────────────
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -117,8 +117,8 @@ const Navbar = () => {
         .upload(path, file, { upsert: true });
       if (uploadError) throw uploadError;
       const { data } = supabase.storage.from("product-images").getPublicUrl(path);
-      setDraft(d => ({ ...d, avatar_url: data.publicUrl }));
-      toast({ title: "Photo uploaded!" });
+      setDraft(d => ({ ...d, upload_pi: data.publicUrl }));
+      toast({ title: t("profile.photo_uploaded", "Photo uploaded!") });
     } catch {
       toast({ title: "Upload failed", variant: "destructive" });
     } finally {
@@ -128,9 +128,9 @@ const Navbar = () => {
 
   const handleSave = async () => {
     if (!profile) return;
-    const ok = await saveProfile({ ...profile, ...draft });
+    const ok = await saveProfile({ ...profile, ...draft, avatar_url: draft.upload_pi });
     if (ok) {
-      toast({ title: "Profile saved!" });
+      toast({ title: t("profile.profile_saved", "Profile saved!") });
       setEditMode(false);
     } else {
       toast({
@@ -220,13 +220,22 @@ const Navbar = () => {
 
                     {/* Header */}
                     <div className="relative bg-gradient-to-br from-primary/10 via-amber-50/60 to-transparent px-5 pt-5 pb-4 border-b border-border">
-                      <button
-                        onClick={() => setEditMode(v => !v)}
-                        className="absolute top-3 right-3 flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground hover:bg-muted transition-colors"
-                      >
-                        <Pencil className="h-3 w-3" />
-                        {editMode ? t('common.cancel') : t('common.edit')}
-                      </button>
+                      <div className="absolute top-3 right-3 flex items-center gap-1">
+                        <button
+                          onClick={() => setEditMode(v => !v)}
+                          className="flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground hover:bg-muted transition-colors border border-border"
+                        >
+                          <Pencil className="h-3 w-3" />
+                          {editMode ? t('common.cancel') : t('common.edit')}
+                        </button>
+                        <button
+                          onClick={() => { setProfileOpen(false); setEditMode(false); }}
+                          className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors border border-border"
+                          title={t('common.close', 'Close')}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
 
                       <div className="flex items-center gap-3">
                         {/* Avatar with upload button */}
@@ -243,7 +252,7 @@ const Navbar = () => {
                               onClick={() => fileInputRef.current?.click()}
                               disabled={uploading}
                               className="absolute bottom-0 right-0 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-white shadow hover:bg-primary/80 disabled:opacity-60"
-                              title={t('profile.upload_photo')}
+                              title={t('profile.upload_pi', 'Upload Pi')}
                             >
                               {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Camera className="h-3 w-3" />}
                             </button>

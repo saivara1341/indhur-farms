@@ -4,6 +4,12 @@
       "badge": "Farm to Table",
       "title": "Experience the journey of food",
       "desc": "Straight from our fields to your home, without mediators."
+    },
+    "founder": {
+      "name": "G.Sanjana reddy",
+      "title": "Founder",
+      "bio1": "Our farm is started with a simple goal — to connect farmers directly with consumers. I am a recent B.Tech graduate who believes in bringing farm products straight from the field to your home without mediators.",
+      "bio2": "Through our farm, we grow and share products like turmeric and other crops, and we also welcome visitors who want to learn about farming and experience the journey of food from soil to table."
     }
   },
   "common": {
@@ -88,6 +94,7 @@
     "created": "Product created",
     "deleted": "Product deleted",
     "off": "OFF",
+    "in_cart": "In Cart",
     "names": {
       "dry_turmeric_fingers": "Dry Turmeric Fingers",
       "pure_turmeric_powder": "Pure Turmeric Powder",
@@ -139,7 +146,27 @@
     "screenshot_required": "Please upload the payment screenshot",
     "payment_screenshot": "Payment Screenshot",
     "back_to_cart": "Back to Cart",
-    "change_delivery_details": "Change Details"
+    "change_delivery_details": "Change Details",
+    "delivery_details": "Delivery Details",
+    "payment": "Payment Method",
+    "indian_phone_hint": "Enter 10-digit number (starts with 6–9)",
+    "app_link": "App Link",
+    "scan_qr": "Scan QR",
+    "upi_id_label": "UPI ID",
+    "open_upi_app": "Open UPI App",
+    "scan_with_any_upi": "Scan with any UPI App",
+    "copy_upi_id": "Copy UPI ID",
+    "enter_txn_id_hint": "Enter the transaction ID after successful payment",
+    "txn_id_placeholder": "Enter Transaction ID (Ref No.)",
+    "admin_verification_note": "Payment will be verified by the admin before confirmation.",
+    "proceed_to_payment": "Proceed to Payment",
+    "regions": {
+      "hyderabad": "Hyderabad",
+      "ap_ts": "Andhra Pradesh & Telangana",
+      "rest_of_india": "Rest of India",
+      "international": "International"
+    },
+    "delivery_instructions": "Any special delivery instructions?"
   },
   "orders": {
     "title": "My Orders",
@@ -466,6 +493,7 @@
     "user": "User",
     "instagram_placeholder": "Instagram handle",
     "whatsapp_placeholder": "WhatsApp number",
-    "gmail_placeholder": "Gmail address"
+    "gmail_placeholder": "Gmail address",
+    "full_name": "Your full name"
   }
 }

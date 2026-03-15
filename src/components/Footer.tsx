@@ -77,7 +77,7 @@ const Footer = () => {
 
           <div>
             <h4 className="mb-6 font-display text-lg font-bold uppercase tracking-wider text-foreground/80">{t('footer.follow_us')}</h4>
-            <p className="mb-4 text-sm text-muted-foreground font-medium">Stay updated with our latest harvests and farming tips.</p>
+            <p className="mb-4 text-sm text-muted-foreground font-medium">{t('footer.follow_us_desc', 'Stay updated with our latest harvests and farming tips.')}</p>
             <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 text-center">
               <p className="text-xs font-bold text-primary mb-2 uppercase tracking-widest">Instagram</p>
               <a href="https://www.instagram.com/indhur.farms" target="_blank" rel="noopener noreferrer" className="font-display text-lg font-black hover:underline hover:text-primary transition-all">
@@ -89,7 +89,7 @@ const Footer = () => {
 
         <div className="mt-16 border-t border-border pt-8 text-center">
           <p className="text-sm font-medium text-muted-foreground">
-            Built with ❤️ <a href="https://siddhidynamics.in" target="_blank" rel="noopener noreferrer" className="hover:text-primary hover:underline transition-colors">Siddhi Dynamics LLP</a>
+            {t('footer.built_with', 'Built with ❤️')} <a href="https://siddhidynamics.in" target="_blank" rel="noopener noreferrer" className="hover:text-primary hover:underline transition-colors">Siddhi Dynamics LLP</a>
           </p>
         </div>
       </div>

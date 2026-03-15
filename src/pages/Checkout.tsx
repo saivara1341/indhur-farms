@@ -214,8 +214,8 @@ const Checkout = () => {
       {/* Step Indicator */}
       <div className="mb-6 flex items-center gap-3">
         {[
-          { key: "details", label: "1. Delivery" },
-          { key: "pay", label: "2. Payment" },
+          { key: "details", label: `1. ${t("checkout.delivery_details")}` },
+          { key: "pay", label: `2. ${t("checkout.payment")}` },
         ].map((s, i, arr) => (
           <div key={s.key} className="flex items-center gap-3">
             <span className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold transition-all ${step === s.key
@@ -264,7 +264,7 @@ const Checkout = () => {
                   <Label htmlFor="name">{t("checkout.full_name")} *</Label>
                   <Input id="name" required value={form.name}
                     onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                    placeholder="Your full name" />
+                    placeholder={t("auth.full_name", "Your full name")} />
                 </div>
 
                 {/* Phone with country prefix */}
@@ -298,7 +298,7 @@ const Checkout = () => {
                     />
                   </div>
                   {phonePrefix === "+91" && (
-                    <p className="mt-1 text-xs text-muted-foreground">Enter 10-digit number (starts with 6–9)</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{t("checkout.indian_phone_hint", "Enter 10-digit number (starts with 6–9)")}</p>
                   )}
                 </div>
               </div>
@@ -311,7 +311,7 @@ const Checkout = () => {
                     placeholder="House No., Street, City, State, PIN" />
                 </div>
                 <div>
-                  <Label htmlFor="region">Delivery Region *</Label>
+                  <Label htmlFor="region">{t("admin.form.category", "Delivery Region")} *</Label>
                   <select
                     id="region"
                     required
@@ -319,9 +319,9 @@ const Checkout = () => {
                     value={form.region}
                     onChange={e => setForm(f => ({ ...f, region: e.target.value }))}
                   >
-                    <option value="">Select Region</option>
-                    <option value="hyderabad">Hyderabad</option>
-                    <option value="ap-ts">Andhra Pradesh &amp; Telangana</option>
+                    <option value="">{t("admin.form.select_category", "Select Region")}</option>
+                    <option value="hyderabad">{t("checkout.regions.hyderabad", "Hyderabad")}</option>
+                    <option value="ap-ts">{t("checkout.regions.ap_ts", "Andhra Pradesh & Telangana")}</option>
                   </select>
 
                   {/* Delivery charge info table */}
@@ -351,11 +351,11 @@ const Checkout = () => {
                 <Label htmlFor="notes">{t("checkout.notes")}</Label>
                 <Textarea id="notes" rows={2} value={form.notes}
                   onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                  placeholder="Any special delivery instructions?" />
+                  placeholder={t("checkout.delivery_instructions", "Any special delivery instructions?")} />
               </div>
             </div>
             <Button variant="hero" size="lg" className="w-full" type="submit">
-              Proceed to Payment — ₹{total} <ArrowRight className="ml-2 h-5 w-5" />
+              {t("checkout.proceed_to_payment", "Proceed to Payment")} — ₹{total} <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </form>
         )}
@@ -375,9 +375,9 @@ const Checkout = () => {
               {/* Toggle Options */}
               <div className="grid grid-cols-3 gap-2 p-1 bg-muted rounded-lg">
                 {[
-                  { id: "app", label: "App Link", icon: Smartphone },
-                  { id: "qr", label: "Scan QR", icon: QrCode },
-                  { id: "id", label: "UPI ID", icon: Copy },
+                  { id: "app", label: t("checkout.app_link", "App Link"), icon: Smartphone },
+                  { id: "qr", label: t("checkout.scan_qr", "Scan QR"), icon: QrCode },
+                  { id: "id", label: t("checkout.upi_id_label", "UPI ID"), icon: Copy },
                 ].map((mode) => (
                   <button
                     key={mode.id}
@@ -400,7 +400,7 @@ const Checkout = () => {
                     <div className="grid gap-3">
                       <a href={upiLink} className="block">
                         <Button variant="hero" size="lg" className="w-full py-6 text-base shadow-lg shadow-primary/10 hover:scale-[1.01] active:scale-[0.99] transition-transform flex items-center justify-center gap-3">
-                          <Smartphone className="h-5 w-5" /> Open UPI App
+                          <Smartphone className="h-5 w-5" /> {t("checkout.open_upi_app", "Open UPI App")}
                         </Button>
                       </a>
                       <div className="flex gap-3">
@@ -425,7 +425,7 @@ const Checkout = () => {
                       <QRCodeCanvas value={upiLink} size={180} level="H" includeMargin />
                     </div>
                     <div>
-                      <p className="font-bold text-sm">Scan with any UPI App</p>
+                      <p className="font-bold text-sm">{t("checkout.scan_with_any_upi", "Scan with any UPI App")}</p>
                       <p className="text-xs text-muted-foreground mt-1">GPay, PhonePe, Paytm, etc.</p>
                     </div>
                   </div>
@@ -438,7 +438,7 @@ const Checkout = () => {
                       <p className="text-lg font-mono font-bold tracking-tight">{upiId}</p>
                     </div>
                     <Button variant="outline" onClick={copyUpiId} className="rounded-full px-6">
-                      <Copy className="mr-2 h-4 w-4" /> Copy UPI ID
+                      <Copy className="mr-2 h-4 w-4" /> {t("checkout.copy_upi_id", "Copy UPI ID")}
                     </Button>
                   </div>
                 )}
@@ -461,11 +461,11 @@ const Checkout = () => {
                       </div>
                     </div>
                   </h4>
-                  <p className="text-xs text-muted-foreground mt-1">Enter the transaction ID after successful payment</p>
+                  <p className="text-xs text-muted-foreground mt-1">{t("checkout.enter_txn_id_hint", "Enter the transaction ID after successful payment")}</p>
                 </div>
                 <div className="space-y-3 max-w-md mx-auto">
                   <Input
-                    placeholder="Enter Transaction ID (Ref No.)"
+                    placeholder={t("checkout.txn_id_placeholder", "Enter Transaction ID (Ref No.)")}
                     className="text-center text-lg font-mono h-14 tracking-widest"
                     value={txnId}
                     onChange={(e) => setTxnId(e.target.value.replace(/[^a-zA-Z0-9]/g, ""))}
@@ -518,7 +518,7 @@ const Checkout = () => {
                     )}
                   </Button>
                   <p className="text-[10px] text-center text-muted-foreground bg-primary/5 p-2 rounded-lg border border-primary/20 animate-pulse">
-                    <Info className="h-3 w-3 inline-block mr-1" /> Payment will be verified by the admin before confirmation.
+                    <Info className="h-3 w-3 inline-block mr-1" /> {t("checkout.admin_verification_note", "Payment will be verified by the admin before confirmation.")}
                   </p>
                 </div>
               </div>
@@ -557,7 +557,7 @@ const Checkout = () => {
               </div>
               {form.region && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Delivery ({form.region === "hyderabad" ? "Hyd" : "AP/TS"})</span>
+                  <span className="text-muted-foreground">{t("cart.shipping", "Delivery")} ({form.region === "hyderabad" ? "Hyd" : "AP/TS"})</span>
                   <span className="font-semibold text-primary">₹{deliveryCharge}</span>
                 </div>
               )}

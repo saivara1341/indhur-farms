@@ -205,7 +205,7 @@ const ProductCard = ({ product, showAllVariants = false }: ProductCardProps) => 
             )}
             {isInCart && (
               <div className="bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-tighter text-center py-1 rounded-lg border border-primary/20">
-                In Cart
+                {t("products.in_cart", "In Cart")}
               </div>
             )}
           </div>

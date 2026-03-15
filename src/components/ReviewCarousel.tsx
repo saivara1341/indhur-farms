@@ -2,8 +2,10 @@ import { motion } from "framer-motion";
 import { Star, Quote, Instagram, MessageCircle, Globe } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useTranslation } from "react-i18next";
 
 const ReviewCarousel = () => {
+  const { t } = useTranslation();
   const { data: reviews, isLoading } = useQuery({
     queryKey: ["approved-reviews"],
     queryFn: async () => {
@@ -30,11 +32,11 @@ const ReviewCarousel = () => {
           viewport={{ once: true }}
           className="font-display text-4xl font-black tracking-tight sm:text-5xl mb-4"
         >
-          Customer Stories
+          {t("reviews.title", "Customer Stories")}
         </motion.h2>
         <div className="h-1.5 w-24 rounded-full bg-primary mx-auto mb-6" />
         <p className="text-muted-foreground max-w-2xl mx-auto font-medium">
-          Real feedback from our farm family on Website, Instagram, and WhatsApp.
+          {t("reviews.subtitle", "Real feedback from our farm family on Website, Instagram, and WhatsApp.")}
         </p>
       </div>
 
@@ -90,7 +92,7 @@ const ReviewCarousel = () => {
                   </div>
                   <div>
                     <h4 className="font-bold text-sm">{review.user_name}</h4>
-                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-black"> Verified {review.source}</p>
+                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-black"> {t("reviews.verified", "Verified")} {review.source}</p>
                   </div>
                 </div>
               </div>
