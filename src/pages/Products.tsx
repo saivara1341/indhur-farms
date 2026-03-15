@@ -6,8 +6,14 @@ import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { useAdmin } from "@/hooks/useAdmin";
 import { Plus, Clock } from "lucide-react";
+import { useState } from "react";
+import { cn } from "@/lib/utils";
 
-// Categories can be managed via Admin panel.
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+}
 
 const Products = () => {
   const { t } = useTranslation();
@@ -16,6 +22,9 @@ const Products = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const categorySlug = searchParams.get("category");
 
+  const [showAllCategories, setShowAllCategories] = useState(false);
+
+  // 1. Fetch all categories
   const { data: allCategories = [] } = useQuery({
     queryKey: ["categories"],
     queryFn: async () => {
@@ -23,26 +32,33 @@ const Products = () => {
         .from("categories")
         .select("*")
         .order("name", { ascending: true });
-      return data || [];
+      return ((data || []) as Category[]).filter(c => c.slug !== "farmer-to-consumer");
     },
   });
 
-  // Only show categories that are NOT the old "farmer-to-consumer" slug
-  const categories = (allCategories as any[]).filter(
-    (c) => c.slug !== "farmer-to-consumer"
-  );
+  // 2. Fetch all active product category IDs to determine "Live" vs "Coming Soon"
+  const { data: liveCategoryIds = new Set<string>() } = useQuery({
+    queryKey: ["live-category-ids"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("products")
+        .select("category_id")
+        .eq("is_active", true);
+      return new Set((data as any[] || []).map(p => p.category_id).filter(Boolean) as string[]);
+    },
+  });
 
-  const liveCategories = categories;
-  const comingSoonCategories: any[] = [];
+  // Split categories based on product presence
+  const liveCategories = (allCategories as Category[]).filter(c => liveCategoryIds.has(c.id));
+  const comingSoonCategories = (allCategories as Category[]).filter(c => !liveCategoryIds.has(c.id));
 
   // Determine if the selected category is live or coming-soon
-  const selectedCat = categories.find((c) => c.slug === categorySlug);
-  const isSelectedComingSoon = false;
+  const selectedCat = (allCategories as Category[]).find((c) => c.slug === categorySlug);
+  const isSelectedComingSoon = selectedCat && !liveCategoryIds.has(selectedCat.id);
 
   const { data: products = [], isLoading } = useQuery({
     queryKey: ["products", categorySlug],
     queryFn: async () => {
-      // If selected category is coming soon, return empty immediately
       if (isSelectedComingSoon) return [];
 
       let query = supabase
@@ -53,13 +69,7 @@ const Products = () => {
       if (categorySlug) {
         const cat = liveCategories.find((c) => c.slug === categorySlug);
         if (cat) query = query.eq("category_id", cat.id);
-        else {
-          // Restrict to live categories only when "All" is selected
-          const liveIds = liveCategories.map((c) => c.id);
-          if (liveIds.length) query = query.in("category_id", liveIds);
-        }
       } else {
-        // "All" tab — only show products from live categories
         const liveIds = liveCategories.map((c) => c.id);
         if (liveIds.length) query = query.in("category_id", liveIds);
       }
@@ -67,15 +77,18 @@ const Products = () => {
       const { data } = await query.order("created_at", { ascending: false });
       return data || [];
     },
-    enabled: categories.length > 0,
+    enabled: allCategories.length > 0,
   });
+
+  const visibleLiveCategories = showAllCategories 
+    ? liveCategories 
+    : liveCategories.slice(0, 3);
 
   return (
     <main className="container mx-auto px-4 py-10">
-      {/* Page heading */}
       <div className="mb-2 flex items-center justify-between">
         <h1 className="font-display text-4xl font-black tracking-tight text-foreground">
-          {selectedCat ? t(`categories.${selectedCat.slug}`) : t("products.page_title")}
+          {selectedCat ? t(`categories.${selectedCat.slug}`, selectedCat.name) : t("products.page_title")}
         </h1>
         {isAdmin && (
           <Button
@@ -89,47 +102,65 @@ const Products = () => {
       <p className="mb-8 text-muted-foreground">{t("products.subtitle")}</p>
 
       {/* ── Category filter tabs ──────────────────────────────── */}
-      <div className="mb-8 flex flex-wrap gap-3 scrollbar-none">
-        {/* "All" tab — always visible */}
+      <div className="mb-8 flex flex-wrap items-center gap-3">
+        {/* "All" tab */}
         <Button
           variant={!categorySlug ? "default" : "outline"}
           size="sm"
-          className={`rounded-full px-5 font-bold transition-all ${!categorySlug
-            ? "bg-primary text-white shadow-lift"
-            : "border-primary/20 text-primary hover:bg-primary/5"
-            }`}
-          onClick={() => setSearchParams({})}
+          className={cn(
+            "rounded-full px-5 font-bold transition-all",
+            !categorySlug ? "bg-primary text-white shadow-lift" : "border-primary/20 text-primary hover:bg-primary/5"
+          )}
+          onClick={() => {
+            setSearchParams({});
+          }}
         >
           {t("products.all")}
         </Button>
 
-        {/* Live categories */}
-        {(liveCategories as any[]).map((cat) => (
+        {/* Live categories (Limited to 3) */}
+        {visibleLiveCategories.map((cat) => (
           <Button
             key={cat.id}
             variant={categorySlug === cat.slug ? "default" : "outline"}
             size="sm"
-            className={`rounded-full px-6 font-bold transition-all ${categorySlug === cat.slug
-              ? "bg-primary text-white shadow-lift"
-              : "border-primary/20 text-primary hover:bg-primary/5"
-              }`}
+            className={cn(
+              "rounded-full px-6 font-bold transition-all",
+              categorySlug === cat.slug ? "bg-primary text-white shadow-lift" : "border-primary/20 text-primary hover:bg-primary/5"
+            )}
             onClick={() => setSearchParams({ category: cat.slug })}
           >
-            {t(`categories.${cat.slug}`) || cat.name}
+            {t(`categories.${cat.slug}`, cat.name)}
           </Button>
         ))}
 
-        {/* Coming Soon categories */}
-        {(comingSoonCategories as any[]).map((cat) => (
-          <div
-            key={cat.id}
-            className="inline-flex items-center gap-2 rounded-full border border-dashed border-primary/20 bg-primary/5 px-4 py-1.5 text-xs font-bold text-primary/40 cursor-not-allowed select-none transition-opacity hover:opacity-80"
+        {/* View All Toggle */}
+        {liveCategories.length > 3 && (
+          <button 
+            onClick={() => setShowAllCategories(!showAllCategories)}
+            className="text-xs font-black uppercase tracking-widest text-primary/60 hover:text-primary transition-colors px-2"
           >
-            {cat.name}
-            <span className="express-badge text-[8px] opacity-60">Soon</span>
+            {showAllCategories ? "Show Less" : "View All"}
+          </button>
+        )}
+
+        {/* Coming Soon categories (Distinct style) */}
+        {comingSoonCategories.length > 0 && (
+          <div className="ml-2 flex flex-wrap gap-2 pt-1 border-l border-primary/10 pl-4">
+            {comingSoonCategories.map((cat) => (
+              <div
+                key={cat.id}
+                className="group relative inline-flex items-center gap-2 rounded-full border border-dashed border-muted-foreground/20 bg-muted/30 px-3 py-1 text-[10px] font-bold text-muted-foreground/60 transition-all hover:bg-muted/50 cursor-help"
+                title="Fresh items arriving soon!"
+              >
+                {t(`categories.${cat.slug}`, cat.name)}
+                <span className="express-badge text-[7px] opacity-40 uppercase">Soon</span>
+              </div>
+            ))}
           </div>
-        ))}
+        )}
       </div>
+
       {isSelectedComingSoon && (
         <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
           <div className="flex h-20 w-20 items-center justify-center rounded-full bg-amber-50 text-amber-400">
@@ -139,7 +170,7 @@ const Products = () => {
             Coming Soon!
           </h2>
           <p className="max-w-sm text-muted-foreground">
-            We're working hard to bring <strong>{t(`categories.${selectedCat?.slug}`) || selectedCat?.name}</strong>{" "}
+            We're working hard to bring <strong>{t(`categories.${selectedCat?.slug}`, selectedCat?.name)}</strong>{" "}
             products to you. Stay tuned — fresh from our farm to your door!
           </p>
           <Button variant="outline" onClick={() => setSearchParams({})}>

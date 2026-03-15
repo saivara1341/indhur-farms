@@ -104,14 +104,26 @@ const Index = () => {
             transition={{ duration: 0.8, ease: "easeOut" }}
             className="max-w-2xl"
           >
-            <motion.span
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="mb-6 inline-flex items-center gap-2 rounded-full bg-white/15 border border-white/30 px-4 py-2 text-xs font-bold uppercase tracking-wider text-white shadow-sm backdrop-blur-sm"
-            >
-              <Star className="h-3.5 w-3.5 fill-white" /> {t("hero.tagline")}
-            </motion.span>
+            {(() => {
+              const tagline = t("hero.tagline");
+              const parts = tagline.split(".... ");
+              return (
+                <motion.span
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="mb-6 flex w-fit flex-wrap items-center gap-x-2 rounded-full bg-white/10 border border-white/20 px-4 py-2.5 text-[10px] sm:text-xs font-bold uppercase tracking-wider text-white shadow-sm backdrop-blur-md"
+                >
+                  <Star className="h-3 w-3 fill-white/80" />
+                  <span className="opacity-90">{parts[0]}</span>
+                  {parts[1] && (
+                    <span className="whitespace-nowrap text-secondary font-black bg-white/10 px-2.5 py-0.5 rounded-full border border-white/10">
+                      .... {parts[1]}
+                    </span>
+                  )}
+                </motion.span>
+              );
+            })()}
             <h1 className="font-display text-5xl font-black leading-[1.1] tracking-tight text-white sm:text-6xl lg:text-7xl drop-shadow-lg">
               {t("hero.title")}
             </h1>
