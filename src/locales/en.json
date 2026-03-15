@@ -435,7 +435,10 @@
       "upload_failed": "Upload Failed",
       "save_settings": "Save Settings",
       "updated": "Settings updated successfully",
-      "payment_settings": "Payment Configuration"
+      "payment_settings": "Payments",
+      "profile_settings": "Profile",
+      "phone_number": "Phone Number",
+      "save_settings_phone": "Save Settings and add phone number"
     }
   },
   "profile": {
@@ -447,6 +450,7 @@
     "cancel": "Cancel",
     "edit": "Edit",
     "save": "Save Changes",
+    "save_changes": "Save Changes",
     "saving": "Saving...",
     "sign_out": "Sign Out",
     "photo_uploaded": "Photo uploaded!",

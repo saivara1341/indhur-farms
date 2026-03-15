@@ -93,7 +93,11 @@ const Navbar = () => {
       }
     };
     document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener("touchstart", handler);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("touchstart", handler);
+    };
   }, []);
 
   const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User";

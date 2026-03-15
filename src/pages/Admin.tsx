@@ -1471,120 +1471,209 @@ const SettingsTab = () => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { settings } = useSettings();
   const [loading, setLoading] = useState(false);
-  const { settings, loading: settingsLoading } = useSettings();
+  const [activeSubTab, setActiveSubTab] = useState("profile");
+  
+  const { data: profile } = useQuery({
+    queryKey: ["admin-profile"],
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("*").eq("id", user?.id).single();
+      return data;
+    },
+    enabled: !!user?.id
+  });
 
-  const [form, setForm] = useState({
+  const [profileForm, setProfileForm] = useState({
+    full_name: "",
+    avatar_url: "",
+  });
+
+  const [paymentForm, setPaymentForm] = useState({
     upi_id: "indhurfarms@upi",
     qr_code_url: "",
-    shop_name: "Indhur Farms",
+    phone_number: "",
   });
 
   useEffect(() => {
+    if (profile) {
+      setProfileForm({
+        full_name: profile.full_name || "",
+        avatar_url: profile.avatar_url || "",
+      });
+    }
+  }, [profile]);
+
+  useEffect(() => {
     if (settings) {
-      setForm({
+      setPaymentForm({
         upi_id: settings.upi_id || "indhurfarms@upi",
         qr_code_url: settings.qr_code_url || "",
-        shop_name: settings.shop_name || "Indhur Farms",
+        phone_number: (settings as any).phone_number || "",
       });
     }
   }, [settings]);
 
-  const handleSave = async (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const { error } = await supabase.from("profiles").update({
+        full_name: profileForm.full_name,
+        avatar_url: profileForm.avatar_url,
+      }).eq("id", user?.id);
+      if (error) throw error;
+      toast({ title: t('admin.settings_config.updated') });
+      queryClient.invalidateQueries({ queryKey: ["admin-profile"] });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSavePayments = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
       const { error } = await supabase.from("site_settings" as any).upsert({
-        id: settings?.id || 1, // Using ID 1 as the single settings row
-        ...form
+        id: settings?.id || 1,
+        upi_id: paymentForm.upi_id,
+        qr_code_url: paymentForm.qr_code_url,
+        phone_number: paymentForm.phone_number,
       } as any);
       if (error) throw error;
       toast({ title: t('admin.settings_config.updated') });
       queryClient.invalidateQueries({ queryKey: ["site-settings"] });
     } catch (err: any) {
-      toast({ title: t('admin.error'), description: err.message, variant: "destructive" });
+      toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
 
   const [uploadingQR, setUploadingQR] = useState(false);
-
   const handleQRUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setUploadingQR(true);
     const fileExt = file.name.split('.').pop();
-    const fileName = `qr-code-${Math.random().toString(36).substring(2)}.${fileExt}`;
+    const fileName = `qr-${Math.random().toString(36).substring(2)}.${fileExt}`;
     const filePath = `settings/${fileName}`;
-
     try {
-      const { error: uploadError } = await supabase.storage
-        .from('product-images') // Reusing the same bucket for now, or could use a new one
-        .upload(filePath, file);
-
+      const { error: uploadError } = await supabase.storage.from('product-images').upload(filePath, file);
       if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('product-images')
-        .getPublicUrl(filePath);
-
-      setForm(prev => ({ ...prev, qr_code_url: publicUrl }));
-      toast({ title: t('admin.settings_config.qr_uploaded'), description: t('admin.settings_config.qr_uploaded_desc') });
+      const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(filePath);
+      setPaymentForm(prev => ({ ...prev, qr_code_url: publicUrl }));
+      toast({ title: t('admin.settings_config.qr_uploaded') });
     } catch (error: any) {
-      toast({ title: t('admin.settings_config.upload_failed'), description: error.message, variant: "destructive" });
+      toast({ title: "Upload failed", description: error.message, variant: "destructive" });
     } finally {
       setUploadingQR(false);
     }
   };
 
   return (
-    <div className="max-w-2xl">
-      <h2 className="mb-4 font-display text-xl font-semibold">{t('admin.settings_config.title')}</h2>
-      <div className="rounded-xl border border-border bg-card p-6 shadow-card">
-        <form onSubmit={handleSave} className="space-y-6">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-4">
-              <div>
-                <Label>{t('admin.settings_config.upi_id')}</Label>
-                <Input value={form.upi_id} onChange={e => setForm(f => ({ ...f, upi_id: e.target.value }))} />
-                <p className="mt-1 text-[10px] text-muted-foreground uppercase">{t('admin.settings_config.upi_hint') || "Used for QR generation and direct links"}</p>
-              </div>
-            </div>
+    <div className="space-y-6">
+      <div className="flex border-b">
+        <button 
+          onClick={() => setActiveSubTab("profile")}
+          className={cn("px-6 py-3 text-sm font-bold uppercase tracking-wider transition-all border-b-2", 
+            activeSubTab === "profile" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground")}
+        >
+          {t('admin.settings_config.profile_settings')}
+        </button>
+        <button 
+          onClick={() => setActiveSubTab("payments")}
+          className={cn("px-6 py-3 text-sm font-bold uppercase tracking-wider transition-all border-b-2", 
+            activeSubTab === "payments" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground")}
+        >
+          {t('admin.settings_config.payment_settings')}
+        </button>
+      </div>
 
-            <div className="space-y-2">
-              <Label>{t('admin.settings_config.qr_label')}</Label>
-              <div className="relative aspect-square w-full overflow-hidden rounded-xl border-2 border-dashed border-primary/20 bg-primary/5 flex flex-col items-center justify-center p-4">
-                {form.qr_code_url ? (
-                  <>
-                    <img src={form.qr_code_url} alt="QR Code" className="h-full w-full object-contain" />
-                    <button
-                      type="button"
-                      onClick={() => setForm(f => ({ ...f, qr_code_url: "" }))}
-                      className="absolute top-2 right-2 p-1.5 rounded-full bg-white/80 text-destructive hover:bg-white shadow-sm"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </>
-                ) : (
-                  <label className="flex h-full w-full flex-col items-center justify-center cursor-pointer hover:bg-primary/10 transition-colors gap-2">
-                    {uploadingQR ? <Loader2 className="h-8 w-8 animate-spin text-primary" /> : <UploadCloud className="h-8 w-8 text-primary" />}
-                    <div className="text-center">
-                      <p className="text-sm font-bold text-primary uppercase tracking-tight">{t('admin.settings_config.qr_upload_title')}</p>
-                      <p className="text-[10px] text-muted-foreground uppercase">{t('admin.settings_config.qr_upload_hint')}</p>
+      <div className="max-w-2xl">
+        {activeSubTab === "profile" ? (
+          <Card className="border-none shadow-none bg-transparent">
+            <CardHeader className="px-0 pt-0">
+              <CardTitle className="text-xl">{t('admin.settings_config.profile_settings')}</CardTitle>
+              <CardDescription>Update your public profile information</CardDescription>
+            </CardHeader>
+            <CardContent className="px-0">
+              <form onSubmit={handleSaveProfile} className="space-y-6">
+                <div className="space-y-2">
+                  <Label>{t('admin.name')}</Label>
+                  <Input value={profileForm.full_name} onChange={e => setProfileForm(f => ({ ...f, full_name: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Avatar URL</Label>
+                  <Input value={profileForm.avatar_url} onChange={e => setProfileForm(f => ({ ...f, avatar_url: e.target.value }))} />
+                </div>
+                <Button type="submit" disabled={loading} className="w-full sm:w-auto">
+                  {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                  {t('profile.save_changes')}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="border-none shadow-none bg-transparent">
+            <CardHeader className="px-0 pt-0">
+              <CardTitle className="text-xl">{t('admin.settings_config.payment_settings')}</CardTitle>
+              <CardDescription>Configure payment details and QR codes</CardDescription>
+            </CardHeader>
+            <CardContent className="px-0">
+              <form onSubmit={handleSavePayments} className="space-y-6">
+                <div className="grid gap-6 sm:grid-cols-2">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>UPI ID</Label>
+                      <Input value={paymentForm.upi_id} onChange={e => setPaymentForm(f => ({ ...f, upi_id: e.target.value }))} placeholder="indhurfarms@upi" />
+                      <p className="text-[10px] text-muted-foreground uppercase">{t('admin.settings_config.upi_hint')}</p>
                     </div>
-                    <input type="file" accept="image/*" className="hidden" onChange={handleQRUpload} disabled={uploadingQR} />
-                  </label>
-                )}
-              </div>
-            </div>
-          </div>
+                    <div className="space-y-2">
+                      <Label>{t('admin.settings_config.phone_number')}</Label>
+                      <Input value={paymentForm.phone_number} onChange={e => setPaymentForm(f => ({ ...f, phone_number: e.target.value }))} placeholder="+91 12345 67890" />
+                    </div>
+                  </div>
 
-          <div className="flex gap-2 pt-4 border-t">
-            <Button type="submit" disabled={loading}>{loading ? t('admin.saving') : t('admin.settings_config.save_settings')}</Button>
-          </div>
-        </form>
+                  <div className="space-y-2">
+                    <Label>Payment QR Code</Label>
+                    <div className="relative aspect-square w-full overflow-hidden rounded-xl border-2 border-dashed border-primary/20 bg-primary/5 flex flex-col items-center justify-center p-4">
+                      {paymentForm.qr_code_url ? (
+                        <>
+                          <img src={paymentForm.qr_code_url} alt="QR Code" className="h-full w-full object-contain" />
+                          <button
+                            type="button"
+                            onClick={() => setPaymentForm(f => ({ ...f, qr_code_url: "" }))}
+                            className="absolute top-2 right-2 p-1.5 rounded-full bg-white/80 text-destructive shadow-sm"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </>
+                      ) : (
+                        <label className="flex h-full w-full flex-col items-center justify-center cursor-pointer hover:bg-primary/10 transition-colors gap-2">
+                          {uploadingQR ? <Loader2 className="h-8 w-8 animate-spin text-primary" /> : <UploadCloud className="h-8 w-8 text-primary" />}
+                          <div className="text-center">
+                            <p className="text-xs font-bold text-primary uppercase">Upload QR Code</p>
+                            <p className="text-[9px] text-muted-foreground uppercase">PNG, JPG up to 5MB</p>
+                          </div>
+                          <input type="file" accept="image/*" className="hidden" onChange={handleQRUpload} disabled={uploadingQR} />
+                        </label>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <Button type="submit" disabled={loading} className="w-full sm:w-auto">
+                  {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                  {t('admin.settings_config.save_settings_phone')}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );
@@ -1796,7 +1885,8 @@ const RecordsTab = () => {
     tracking_id: "",
     courier_name: "",
     delivery_status: "pending",
-    custom_type: ""
+    custom_type: "",
+    order_items: [{ productId: "", name: "", price: 0, quantity: 1, custom: false }]
   });
 
   const { data: records, isLoading } = useQuery({
@@ -1821,8 +1911,8 @@ const RecordsTab = () => {
       if (form.type === 'order') {
         finalContent = JSON.stringify({
           customer: form.customer_name,
-          amount: form.total_amount,
-          items: form.items,
+          amount: form.total_amount || form.order_items.reduce((acc, item) => acc + (item.price * item.quantity), 0),
+          items: form.order_items,
           notes: form.content
         });
       } else if (form.type === 'delivery') {
@@ -1848,7 +1938,8 @@ const RecordsTab = () => {
         title: "", type: "note", content: "", 
         customer_name: "", total_amount: "", items: "",
         tracking_id: "", courier_name: "", delivery_status: "pending",
-        custom_type: "" 
+        custom_type: "",
+        order_items: [{ productId: "", name: "", price: 0, quantity: 1, custom: false }]
       });
       setShowForm(false);
       queryClient.invalidateQueries({ queryKey: ["admin-records"] });
@@ -2003,18 +2094,122 @@ const RecordsTab = () => {
                 )}
 
                 {form.type === 'order' && (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid gap-4 sm:grid-cols-2 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold text-blue-700">{t('admin.record_customer')}</Label>
-                      <Input value={form.customer_name} onChange={e => setForm(f => ({ ...f, customer_name: e.target.value }))} className="bg-white" />
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label className="text-xs font-bold text-blue-700">{t('admin.record_customer')}</Label>
+                        <Input value={form.customer_name} onChange={e => setForm(f => ({ ...f, customer_name: e.target.value }))} className="bg-white" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs font-bold text-blue-700">{t('admin.record_amount')} (Manual Overide)</Label>
+                        <Input type="number" value={form.total_amount} onChange={e => setForm(f => ({ ...f, total_amount: e.target.value }))} className="bg-white" placeholder="Auto-calc if empty" />
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold text-blue-700">{t('admin.record_amount')}</Label>
-                      <Input type="number" value={form.total_amount} onChange={e => setForm(f => ({ ...f, total_amount: e.target.value }))} className="bg-white" />
-                    </div>
-                    <div className="sm:col-span-2 space-y-2">
-                      <Label className="text-xs font-bold text-blue-700">{t('admin.record_items')}</Label>
-                      <Textarea value={form.items} onChange={e => setForm(f => ({ ...f, items: e.target.value }))} className="bg-white h-20" />
+                    
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-bold text-blue-700">🛒 {t('admin.record_items')}</Label>
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => setForm(f => ({ ...f, order_items: [...f.order_items, { productId: "", name: "", price: 0, quantity: 1, custom: false }] }))}
+                          className="h-7 text-[10px] uppercase font-bold"
+                        >
+                          <Plus className="h-3 w-3 mr-1" /> Add Product
+                        </Button>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        {form.order_items.map((item, idx) => (
+                          <div key={idx} className="flex gap-2 items-start bg-white p-2 rounded-lg border shadow-sm">
+                            <div className="flex-1 space-y-1">
+                              {item.custom ? (
+                                <Input 
+                                  value={item.name} 
+                                  onChange={e => {
+                                    const newItems = [...form.order_items];
+                                    newItems[idx].name = e.target.value;
+                                    setForm(f => ({ ...f, order_items: newItems }));
+                                  }}
+                                  placeholder="Custom Item Name"
+                                  className="h-8 text-xs"
+                                />
+                              ) : (
+                                <Select 
+                                  value={item.productId} 
+                                  onValueChange={val => {
+                                    if (val === 'custom') {
+                                      const newItems = [...form.order_items];
+                                      newItems[idx].custom = true;
+                                      newItems[idx].productId = "";
+                                      setForm(f => ({ ...f, order_items: newItems }));
+                                      return;
+                                    }
+                                    const prod = (queryClient.getQueryData(['products']) as any[])?.find(p => p.id === val);
+                                    const newItems = [...form.order_items];
+                                    newItems[idx].productId = val;
+                                    newItems[idx].name = prod?.name || "";
+                                    newItems[idx].price = Number(prod?.price || 0);
+                                    setForm(f => ({ ...f, order_items: newItems }));
+                                  }}
+                                >
+                                  <SelectTrigger className="h-8 text-xs bg-muted/20">
+                                    <SelectValue placeholder="Select Product" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="custom">➕ {t('admin.delivery.other_custom')}</SelectItem>
+                                    {((queryClient.getQueryData(['admin-products']) as any[]) || []).map(p => (
+                                      <SelectItem key={p.id} value={p.id}>{p.name} (₹{p.price})</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            </div>
+                            
+                            <div className="w-20">
+                              <Input 
+                                type="number" 
+                                value={item.price} 
+                                onChange={e => {
+                                  const newItems = [...form.order_items];
+                                  newItems[idx].price = Number(e.target.value);
+                                  setForm(f => ({ ...f, order_items: newItems }));
+                                }}
+                                placeholder="Price"
+                                className="h-8 text-xs"
+                              />
+                            </div>
+                            
+                            <div className="w-16">
+                              <Input 
+                                type="number" 
+                                value={item.quantity} 
+                                onChange={e => {
+                                  const newItems = [...form.order_items];
+                                  newItems[idx].quantity = Number(e.target.value);
+                                  setForm(f => ({ ...f, order_items: newItems }));
+                                }}
+                                placeholder="Qty"
+                                className="h-8 text-xs"
+                              />
+                            </div>
+                            
+                            <Button 
+                              type="button" 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => {
+                                const newItems = form.order_items.filter((_, i) => i !== idx);
+                                setForm(f => ({ ...f, order_items: newItems.length ? newItems : [{ productId: "", name: "", price: 0, quantity: 1, custom: false }] }));
+                              }}
+                              className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </motion.div>
                 )}
@@ -2139,7 +2334,18 @@ const RecordsTab = () => {
                               <p className="text-blue-700 font-bold uppercase text-[9px] mb-1">{t('admin.record_amount')}</p>
                               <p className="font-bold text-blue-800">₹{data.amount || '0'}</p>
                             </div>
-                            {data.items && (
+                            {data.items && Array.isArray(data.items) && (
+                              <div className="col-span-2 bg-muted/30 p-2 rounded-lg border divide-y divide-border/50">
+                                <p className="text-muted-foreground font-bold uppercase text-[9px] mb-1">{t('admin.record_items')}</p>
+                                {data.items.map((item: any, i: number) => (
+                                  <div key={i} className="flex justify-between py-1 first:pt-0">
+                                    <span className="font-medium">{item.name}</span>
+                                    <span className="text-muted-foreground">x{item.quantity} (₹{item.price})</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {data.items && typeof data.items === 'string' && (
                               <div className="col-span-2 bg-muted/30 p-2 rounded-lg border">
                                 <p className="text-muted-foreground font-bold uppercase text-[9px] mb-1">{t('admin.record_items')}</p>
                                 <p className="line-clamp-2 italic">{data.items}</p>
