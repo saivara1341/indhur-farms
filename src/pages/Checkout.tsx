@@ -114,22 +114,39 @@ const Checkout = () => {
   const { saveProfile } = useProfile();
 
   const handleSelectAddress = (addr: any, idx: number) => {
-    setSelectedAddressIdx(idx);
-    
-    setForm({
-      ...form,
-      houseNo: addr.street?.split(',')[0] || addr.street || "",
-      streetName: addr.street?.split(',').slice(1).join(',').trim() || addr.street || "",
-      mandal: addr.city || "",
-      district: addr.city || "",
-      pincode: addr.zip || "",
-      state: addr.state || "Andhra Pradesh",
-      otherState: addr.otherState || "",
-      country: addr.country || "India",
-    });
-    
-    toast({ title: `Selected "${addr.label}" address` });
-    setSaveAddress(false); 
+    if (selectedAddressIdx === idx) {
+      // Toggle off: Unselect and clear
+      setSelectedAddressIdx(null);
+      setForm({
+        ...form,
+        houseNo: "",
+        streetName: "",
+        mandal: "",
+        district: "",
+        pincode: "",
+        state: "Andhra Pradesh",
+        otherState: "",
+        country: "India",
+      });
+      setSaveAddress(true);
+      toast({ title: "Cleared selected address" });
+    } else {
+      // Toggle on: Select and fill
+      setSelectedAddressIdx(idx);
+      setForm({
+        ...form,
+        houseNo: addr.street?.split(',')[0] || addr.street || "",
+        streetName: addr.street?.split(',').slice(1).join(',').trim() || addr.street || "",
+        mandal: addr.city || "",
+        district: addr.city || "",
+        pincode: addr.zip || "",
+        state: addr.state || "Andhra Pradesh",
+        otherState: addr.otherState || "",
+        country: addr.country || "India",
+      });
+      setSaveAddress(false); 
+      toast({ title: `Selected "${addr.label}" address` });
+    }
   };
 
   const totalGrams = items.reduce((acc, item) => {
