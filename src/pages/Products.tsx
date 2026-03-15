@@ -50,7 +50,10 @@ const Products = () => {
 
   // Split categories based on product presence
   const liveCategories = (allCategories as Category[]).filter(c => liveCategoryIds.has(c.id));
-  const comingSoonCategories = (allCategories as Category[]).filter(c => !liveCategoryIds.has(c.id));
+  const comingSoonCategories = (allCategories as Category[]).filter(c => 
+    !liveCategoryIds.has(c.id) && 
+    !["sugarcane", "turmeric-roots", "turmeric-powder"].includes(c.slug)
+  );
 
   // Determine if the selected category is live or coming-soon
   const selectedCat = (allCategories as Category[]).find((c) => c.slug === categorySlug);

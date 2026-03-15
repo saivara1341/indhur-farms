@@ -20,6 +20,7 @@ import Profile from "./pages/Profile";
 import Admin from "./pages/Admin";
 import About from "./pages/About";
 import OrderSuccess from "./pages/OrderSuccess";
+import TrackOrder from "./pages/TrackOrder";
 import NotFound from "./pages/NotFound";
 // import VoiceAgent from "@/components/VoiceAgent";
 
@@ -46,6 +47,7 @@ const App = () => (
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/orders" element={<Orders />} />
                   <Route path="/order-success" element={<OrderSuccess />} />
+                  <Route path="/track-order" element={<TrackOrder />} />
                   <Route path="/profile" element={<Profile />} />
                   <Route path="/admin" element={<Admin />} />
                   <Route path="/about" element={<About />} />

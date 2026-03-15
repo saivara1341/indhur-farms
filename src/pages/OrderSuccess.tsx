@@ -1,8 +1,10 @@
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, ShoppingBag, ArrowRight } from "lucide-react";
+import { CheckCircle2, ShoppingBag, ArrowRight, Truck } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
+import confetti from "canvas-confetti";
 
 const OrderSuccess = () => {
     const { t } = useTranslation();
@@ -31,16 +33,16 @@ const OrderSuccess = () => {
                 </p>
 
                 <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-                    <Link to="/orders">
-                        <Button variant="default" className="gap-2">
-                            <ShoppingBag className="h-4 w-4" />
-                            {t('orders.view_orders') || "View My Orders"}
+                    <Link to="/track-order">
+                        <Button variant="hero" className="gap-2 shadow-lg shadow-primary/20 hover:scale-105 transition-transform">
+                            <Truck className="h-4 w-4" />
+                            {t('orders.track_order') || "Track Your Order"}
                         </Button>
                     </Link>
                     <Link to="/products">
-                        <Button variant="outline" className="gap-2">
-                            {t('cart.continue_shopping') || "Continue Shopping"}
-                            <ArrowRight className="h-4 w-4" />
+                        <Button variant="outline" className="gap-2 rounded-full border-2 hover:bg-primary hover:text-white transition-all">
+                            <ShoppingBag className="h-4 w-4" />
+                            {t('products.browse_more') || "Browse Other Products"}
                         </Button>
                     </Link>
                 </div>
