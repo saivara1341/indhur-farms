@@ -124,8 +124,17 @@ const Checkout = () => {
     }
     setLoading(true);
     const fullPhone = `${phonePrefix} ${phoneNumber}`;
+    // Fetch fresh user to ensure session is valid and ID matches for RLS
+    const { data: { user: freshUser }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError || !freshUser) {
+      toast({ title: "Session Expired", description: "Please log in again to place an order.", variant: "destructive" });
+      navigate("/auth");
+      return;
+    }
+
     const orderPayload = {
-      user_id: user.id,
+      user_id: freshUser.id,
       total,
       shipping_address: `${form.name}\n${form.houseNo}, ${form.streetName}\n${form.mandal}, ${form.district}\n${form.state}, ${form.country}\nPIN: ${form.pincode}`,
       phone: fullPhone,
