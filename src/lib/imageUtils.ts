@@ -29,7 +29,7 @@ const FALLBACK_IMAGES: { keywords: string[]; url: string }[] = [
         url: "https://images.unsplash.com/photo-1615485242231-8933227928b9?w=400&auto=format&fit=crop&q=80",
     },
     {
-        keywords: ["powder", "churna"],
+        keywords: ["powder", "churna", "spice", "masala", "cardamom", "clove", "cinnamon", "ginger", "pepper", "garlic"],
         url: "https://images.unsplash.com/photo-1596647413661-d7790eb21cf5?w=400&auto=format&fit=crop&q=80",
     },
     {

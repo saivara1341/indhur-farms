@@ -145,7 +145,10 @@ const Orders = () => {
                       <p className="text-sm font-mono text-muted-foreground truncate max-w-[120px]">#{order.id.slice(0, 8)}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div 
+                    className="flex items-center gap-2 group/status cursor-pointer select-none"
+                    onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)}
+                  >
                     <span className={cn(
                       "px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm",
                       order.status === 'delivered' ? "bg-primary text-white" : "bg-white text-foreground border border-border"
@@ -155,8 +158,10 @@ const Orders = () => {
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className={cn("rounded-full transition-transform duration-300", expandedOrderId === order.id && "rotate-90 bg-primary/10 text-primary")}
-                      onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)}
+                      className={cn(
+                        "h-8 w-8 rounded-full transition-all duration-300", 
+                        expandedOrderId === order.id ? "rotate-90 bg-primary/10 text-primary" : "text-muted-foreground group-hover/status:bg-primary/5 group-hover/status:text-primary group-hover/status:translate-x-0.5"
+                      )}
                     >
                       <ChevronRight className="h-5 w-5" />
                     </Button>
@@ -171,8 +176,9 @@ const Orders = () => {
                         <div key={idx} className="h-10 w-10 rounded-full border-2 border-white overflow-hidden bg-muted shadow-sm ring-1 ring-border">
                           <img 
                             src={item.products?.image_url || getSmartFallback(item.products?.name, item.products?.slug)} 
-                            alt="" 
-                            className="h-full w-full object-cover" 
+                            alt={item.products?.name} 
+                            loading="lazy"
+                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" 
                           />
                         </div>
                       ))}
@@ -209,7 +215,8 @@ const Orders = () => {
                             <img 
                               src={item.products?.image_url || getSmartFallback(item.products?.name, item.products?.slug)} 
                               alt={item.products?.name} 
-                              className="h-full w-full object-cover" 
+                              loading="lazy"
+                              className="h-full w-full object-cover transition-transform duration-700 hover:scale-110" 
                             />
                           </div>
                           <div className="min-w-0 flex-1">
