@@ -234,6 +234,11 @@ export type Database = {
                     user_id: string
                     full_name: string | null
                     avatar_url: string | null
+                    phone: string | null
+                    addresses: Json | null
+                    instagram_handles: string[] | null
+                    whatsapp_numbers: string[] | null
+                    gmail_addresses: string[] | null
                     created_at: string
                 }
                 Insert: {
@@ -241,6 +246,11 @@ export type Database = {
                     user_id: string
                     full_name?: string | null
                     avatar_url?: string | null
+                    phone?: string | null
+                    addresses?: Json | null
+                    instagram_handles?: string[] | null
+                    whatsapp_numbers?: string[] | null
+                    gmail_addresses?: string[] | null
                     created_at?: string
                 }
                 Update: {
@@ -248,6 +258,11 @@ export type Database = {
                     user_id?: string
                     full_name?: string | null
                     avatar_url?: string | null
+                    phone?: string | null
+                    addresses?: Json | null
+                    instagram_handles?: string[] | null
+                    whatsapp_numbers?: string[] | null
+                    gmail_addresses?: string[] | null
                     created_at?: string
                 }
             }
