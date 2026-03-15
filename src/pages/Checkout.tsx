@@ -193,9 +193,17 @@ const Checkout = () => {
       navigate("/order-success");
     } catch (err: any) {
       console.error("CRITICAL: Order placement failed:", err);
+      
+      let errorDescription = err.message || "Unknown error occurred";
+      
+      // Database Expert: Detect common schema mismatch signatures
+      if (errorDescription.toLowerCase().includes("column") || errorDescription.toLowerCase().includes("schema cache")) {
+        errorDescription = "Database schema mismatch detected. Please run the 'Database Schema Auditor' script in your Supabase SQL Editor to fix missing columns (like payment_screenshot_url).";
+      }
+
       toast({ 
         title: t("checkout.order_failed"), 
-        description: err.message || "Unknown error occurred", 
+        description: errorDescription, 
         variant: "destructive" 
       });
     } finally {
