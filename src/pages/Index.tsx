@@ -11,6 +11,7 @@ import { motion } from "framer-motion";
 import { getTranslatedBaseName } from "@/lib/translations";
 import { useEffect, useRef, useCallback } from "react";
 import ReviewCarousel from "@/components/ReviewCarousel";
+import MetaSEO from "@/components/MetaSEO";
 
 const Index = () => {
   const { t } = useTranslation();
@@ -86,6 +87,7 @@ const Index = () => {
 
   return (
     <main>
+      <MetaSEO />
       {/* Hero */}
       <section className="relative flex min-h-[85vh] items-center overflow-hidden">
         <motion.img

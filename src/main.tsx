@@ -6,14 +6,18 @@ import "./i18n";
 
 import GlobalErrorBoundary from "./components/GlobalErrorBoundary.tsx";
 
+import { HelmetProvider } from "react-helmet-async";
+
 try {
   const rootElement = document.getElementById("root");
   if (!rootElement) throw new Error("Failed to find the root element");
 
   createRoot(rootElement).render(
-    <GlobalErrorBoundary>
-      <App />
-    </GlobalErrorBoundary>
+    <HelmetProvider>
+      <GlobalErrorBoundary>
+        <App />
+      </GlobalErrorBoundary>
+    </HelmetProvider>
   );
 } catch (e: any) {
   document.body.innerHTML = `

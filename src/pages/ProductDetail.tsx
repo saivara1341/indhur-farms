@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getTranslatedBaseName } from "@/lib/translations";
+import MetaSEO from "@/components/MetaSEO";
 
 const ProductDetail = () => {
   const { slug } = useParams();
@@ -55,6 +56,13 @@ const ProductDetail = () => {
 
   return (
     <main className="container mx-auto px-4 py-10">
+      <MetaSEO 
+        title={product.name} 
+        description={product.description || ""} 
+        image={currentImg}
+        url={window.location.href}
+        type="product"
+      />
       {/* Back button */}
       <button
         onClick={() => navigate(-1)}

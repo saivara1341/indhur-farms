@@ -17,10 +17,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
-import { Package, ShoppingBag, ShoppingCart, Truck, Plus, Pencil, Trash2, CreditCard, Search, ExternalLink, ListTree, LayoutDashboard, Settings, ChevronRight, ChevronDown, ChevronUp, BarChart3, Users, Shield, ImagePlus, X, UploadCloud, Loader2, AlertTriangle, TrendingUp, Zap, Tag, TrendingDown, DollarSign, ClipboardList, Star, MessageSquare, Check, Ban, Info, History, StickyNote, FileText, CheckCircle, Smartphone, Filter, ArrowUpDown, Camera } from "lucide-react";
+import { Package, ShoppingBag, ShoppingCart, Truck, Plus, Pencil, Trash2, CreditCard, Search, ExternalLink, ListTree, LayoutDashboard, Settings, ChevronRight, ChevronDown, ChevronUp, BarChart3, Users, Shield, ImagePlus, X, UploadCloud, Loader2, AlertTriangle, TrendingUp, Zap, Tag, TrendingDown, DollarSign, ClipboardList, Star, MessageSquare, Check, Ban, Info, History, StickyNote, FileText, CheckCircle, Smartphone, Filter, ArrowUpDown, Camera, PieChart as PieChartIcon } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from "@/components/ui/card";
 import { formatDistanceToNow } from "date-fns";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, Legend } from "recharts";
 import { seedSampleData } from "@/lib/seedData";
 import { cn } from "@/lib/utils";
 import { useSettings } from "@/hooks/useSettings";
@@ -276,6 +276,39 @@ const DashboardHome = () => {
     },
   });
 
+  const { data: catSales } = useQuery({
+    queryKey: ["category-sales"],
+    queryFn: async () => {
+      const { data } = await supabase.from("order_items").select("price, quantity, products(category_id, categories(name))");
+      const groups: Record<string, number> = {};
+      (data || []).forEach((item: any) => {
+        const catName = (item.products as any)?.categories?.name || "Uncategorized";
+        groups[catName] = (groups[catName] || 0) + (Number(item.price) * item.quantity);
+      });
+      return Object.entries(groups).map(([name, value]) => ({ name, value }));
+    }
+  });
+
+  const { data: customerData } = useQuery({
+    queryKey: ["customer-loyalty"],
+    queryFn: async () => {
+      const { data } = await supabase.from("orders").select("user_id");
+      const counts: Record<string, number> = {};
+      (data || []).forEach((o: any) => {
+        if (o.user_id) counts[o.user_id] = (counts[o.user_id] || 0) + 1;
+      });
+      const totals = Object.values(counts);
+      const returning = totals.filter(c => c > 1).length;
+      const newCust = totals.filter(c => c === 1).length;
+      return [
+        { name: t('admin.new_customers', 'New'), value: newCust },
+        { name: t('admin.returning_customers', 'Returning'), value: returning },
+      ];
+    }
+  });
+
+  const COLORS = ['#10b981', '#f59e0b', '#3b82f6', '#8b5cf6', '#ef4444'];
+
   return (
     <div className="space-y-8">
       <StatsGrid lowStockItems={lowStockItems} />
@@ -315,6 +348,69 @@ const DashboardHome = () => {
       </Card>
 
       <div className="grid gap-6 lg:grid-cols-2">
+        {/* Sales by Category */}
+        <Card className="shadow-sm border-border/60">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><PieChartIcon className="h-5 w-5 text-primary" /> {t('admin.sales_by_category', 'Sales by Category')}</CardTitle>
+          </CardHeader>
+          <CardContent className="h-[300px]">
+            {catSales && catSales.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={catSales}
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {catSales.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(v: any) => `₹${safeFormat(v)}`} />
+                  <Legend verticalAlign="bottom" height={36}/>
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-full items-center justify-center text-muted-foreground italic text-sm">
+                No categorical data
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Customer Loyalty */}
+        <Card className="shadow-sm border-border/60">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><Users className="h-5 w-5 text-primary" /> {t('admin.customer_loyalty', 'Customer Loyalty')}</CardTitle>
+          </CardHeader>
+          <CardContent className="h-[300px]">
+            {customerData && customerData.some(d => d.value > 0) ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={customerData}
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={80}
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    dataKey="value"
+                  >
+                    <Cell fill="#10b981" />
+                    <Cell fill="#3b82f6" />
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-full items-center justify-center text-muted-foreground italic text-sm">
+                Insufficient user data
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Low Stock Alert */}
         <Card className={`shadow-sm ${lowStockItems && lowStockItems.length > 0 ? "border-orange-300 bg-orange-50/30 dark:bg-orange-950/10" : "border-border/60"}`}>
           <CardHeader>
@@ -392,8 +488,9 @@ const StatsGrid = ({ lowStockItems }: { lowStockItems: any[] | undefined }) => {
       const totalRevenue = (orders as any[])?.reduce((acc, curr) => acc + Number(curr.total), 0) || 0;
       const totalOrders = (orders as any[])?.length || 0;
       const pendingOrders = (orders as any[])?.filter(o => o.status === 'pending').length || 0;
+      const aov = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
-      return { totalRevenue, totalOrders, pendingOrders, productsCount, categoryCount };
+      return { totalRevenue, totalOrders, pendingOrders, productsCount, categoryCount, aov };
     }
   });
 
@@ -407,6 +504,16 @@ const StatsGrid = ({ lowStockItems }: { lowStockItems: any[] | undefined }) => {
         <CardContent>
           <div className="text-2xl font-bold">₹{safeFormat(stats?.totalRevenue)}</div>
           <p className="text-xs text-muted-foreground">{t('admin.confirmed_orders', { count: stats?.totalOrders || 0 })}</p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+          <CardTitle className="text-sm font-medium">{t('admin.avg_order_value', 'Avg. Order Value')}</CardTitle>
+          <DollarSign className="h-4 w-4 text-emerald-500" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">₹{safeFormat(stats?.aov)}</div>
+          <p className="text-xs text-muted-foreground">{t('admin.per_order', 'per successful order')}</p>
         </CardContent>
       </Card>
       <Card>
