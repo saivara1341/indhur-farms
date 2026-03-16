@@ -53,8 +53,8 @@ const App = () => (
                   <Route path="/about" element={<About />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
+                <Footer />
               </div>
-              <Footer />
               <MobileBottomNav />
             </div>
           </CartProvider>
