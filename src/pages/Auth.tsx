@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
 import { Leaf, Eye, EyeOff } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { GoogleLogin } from "@react-oauth/google";
 
 const Auth = () => {
   const [authMode, setAuthMode] = useState<"login" | "signup" | "reset" | "update">("login");
@@ -58,14 +59,14 @@ const Auth = () => {
           password,
           options: {
             data: { full_name: fullName },
-            emailRedirectTo: window.location.origin + "/auth",
+            emailRedirectTo: window.location.origin + import.meta.env.BASE_URL + "auth",
           },
         });
         if (error) throw error;
         toast({ title: t('auth.signup_btn') + "!", description: t('auth.verify_email') });
       } else if (authMode === "reset") {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: window.location.origin + "/auth",
+          redirectTo: window.location.origin + import.meta.env.BASE_URL + "auth",
         });
         if (error) throw error;
         toast({ title: t('auth.reset_link_sent') });
@@ -77,6 +78,22 @@ const Auth = () => {
         setAuthMode("login");
         navigate("/auth");
       }
+    } catch (err: any) {
+      toast({ title: t('common.error'), description: err.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    try {
+      setLoading(true);
+      const { error } = await supabase.auth.signInWithIdToken({
+        provider: "google",
+        token: credentialResponse.credential,
+      });
+      if (error) throw error;
+      toast({ title: t('auth.welcome_back') + "!" });
     } catch (err: any) {
       toast({ title: t('common.error'), description: err.message, variant: "destructive" });
     } finally {
@@ -165,6 +182,32 @@ const Auth = () => {
 
         {(authMode === "login" || authMode === "signup") && (
           <>
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-border" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">{t('auth.or_continue_with')}</span>
+              </div>
+            </div>
+
+            <div className="flex justify-center w-full">
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={() => {
+                  toast({
+                    title: t('common.error'),
+                    description: "Google Login Failed",
+                    variant: "destructive",
+                  });
+                }}
+                useOneTap
+                theme="outline"
+                size="large"
+                width="100%"
+                shape="pill"
+              />
+            </div>
           </>
         )}
 

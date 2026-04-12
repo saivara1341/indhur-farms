@@ -51,7 +51,11 @@ const Profile = () => {
 
   const [addressForm, setAddressForm] = useState({
     label: "Home",
+    houseNo: "",
+    streetName: "",
     street: "",
+    mandal: "",
+    district: "",
     city: "",
     state: "Andhra Pradesh",
     otherState: "",
@@ -137,11 +141,18 @@ const Profile = () => {
   };
 
   const handleAddOrUpdateAddress = async () => {
+    // Ensure legacy fields are synced for backward compatibility
+    const syncedAddress = {
+      ...addressForm,
+      street: addressForm.street || `${addressForm.houseNo}${addressForm.houseNo && addressForm.streetName ? ', ' : ''}${addressForm.streetName}`,
+      city: addressForm.city || addressForm.mandal || addressForm.district || ""
+    };
+
     const newAddresses = [...form.addresses];
     if (editingAddressIdx !== null) {
-      newAddresses[editingAddressIdx] = addressForm;
+      newAddresses[editingAddressIdx] = syncedAddress;
     } else {
-      newAddresses.push(addressForm);
+      newAddresses.push(syncedAddress);
     }
 
     // Auto-save to profile
@@ -153,7 +164,10 @@ const Profile = () => {
     if (success) {
       setForm(f => ({ ...f, addresses: newAddresses }));
       setShowAddressDialog(false);
-      setAddressForm({ label: "Home", street: "", city: "", state: "Andhra Pradesh", otherState: "", zip: "", country: "India" });
+      setAddressForm({ 
+        label: "Home", houseNo: "", streetName: "", street: "", mandal: "", district: "", city: "", 
+        state: "Andhra Pradesh", otherState: "", zip: "", country: "India" 
+      });
       setEditingAddressIdx(null);
       queryClient.invalidateQueries({ queryKey: ["profile"] });
       toast({ title: "Address saved successfully!" });
@@ -368,10 +382,14 @@ const Profile = () => {
                             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                               <button 
                                 onClick={() => {
-                                  setEditingAddressIdx(idx);
+                                setEditingAddressIdx(idx);
                                   setAddressForm({
                                     label: addr.label || "Home",
+                                    houseNo: addr.houseNo || "",
+                                    streetName: addr.streetName || "",
                                     street: addr.street || "",
+                                    mandal: addr.mandal || "",
+                                    district: addr.district || "",
                                     city: addr.city || "",
                                     state: addr.state || "Andhra Pradesh",
                                     otherState: addr.otherState || "",
@@ -393,8 +411,9 @@ const Profile = () => {
                             </div>
                           </div>
                           <p className="text-sm font-medium leading-relaxed">
-                            {addr.street}<br />
-                            {addr.city}, {addr.state === "Other" ? addr.otherState : addr.state} - {addr.zip}<br />
+                            {addr.houseNo ? `${addr.houseNo}, ` : ""}{addr.streetName || addr.street}<br />
+                            {addr.mandal || addr.city}{addr.district && addr.district !== (addr.mandal || addr.city) ? `, ${addr.district}` : ""}<br />
+                            {addr.state === "Other" ? addr.otherState : addr.state} - {addr.zip}<br />
                             {addr.country}
                           </p>
                         </div>
@@ -499,47 +518,57 @@ const Profile = () => {
               <Label>Label (e.g. Home, Office)</Label>
               <Input value={addressForm.label} onChange={e => setAddressForm(a => ({ ...a, label: e.target.value }))} className="rounded-xl" />
             </div>
-            <div className="space-y-2">
-              <Label>Street Address</Label>
-              <Input value={addressForm.street} onChange={e => setAddressForm(a => ({ ...a, street: e.target.value }))} className="rounded-xl" />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>House / Flat No</Label>
+                <Input value={addressForm.houseNo} onChange={e => setAddressForm(a => ({ ...a, houseNo: e.target.value }))} className="rounded-xl" />
+              </div>
+              <div className="space-y-2">
+                <Label>Street / Area</Label>
+                <Input value={addressForm.streetName} onChange={e => setAddressForm(a => ({ ...a, streetName: e.target.value }))} className="rounded-xl" />
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>City</Label>
-                <Input value={addressForm.city} onChange={e => setAddressForm(a => ({ ...a, city: e.target.value }))} className="rounded-xl" />
+                <Label>Mandal / Town</Label>
+                <Input value={addressForm.mandal} onChange={e => setAddressForm(a => ({ ...a, mandal: e.target.value }))} className="rounded-xl" />
               </div>
               <div className="space-y-2">
-                <Label>State</Label>
-                <Select 
-                  value={addressForm.state} 
-                  onValueChange={(val) => setAddressForm(a => ({ 
-                    ...a, 
-                    state: val, 
-                    country: val === "Other" ? a.country : "India" 
-                  }))}
-                >
-                  <SelectTrigger className="rounded-xl">
-                    <SelectValue placeholder="Select state" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-[280px]">
-                    {INDIA_STATES.map(s => (
-                      <SelectItem key={s} value={s}>{s}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label>District</Label>
+                <Input value={addressForm.district} onChange={e => setAddressForm(a => ({ ...a, district: e.target.value }))} className="rounded-xl" />
               </div>
-              {addressForm.state === "Other" && (
-                <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
-                  <Label>Enter State Name</Label>
-                  <Input 
-                    value={addressForm.otherState} 
-                    onChange={e => setAddressForm(a => ({ ...a, otherState: e.target.value }))} 
-                    className="rounded-xl" 
-                    placeholder="Enter state name"
-                  />
-                </div>
-              )}
             </div>
+            <div className="space-y-2">
+              <Label>State</Label>
+              <Select 
+                value={addressForm.state} 
+                onValueChange={(val) => setAddressForm(a => ({ 
+                  ...a, 
+                  state: val, 
+                  country: val === "Other" ? a.country : "India" 
+                }))}
+              >
+                <SelectTrigger className="rounded-xl">
+                  <SelectValue placeholder="Select state" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[280px]">
+                  {INDIA_STATES.map(s => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {addressForm.state === "Other" && (
+              <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                <Label>Enter State Name</Label>
+                <Input 
+                  value={addressForm.otherState} 
+                  onChange={e => setAddressForm(a => ({ ...a, otherState: e.target.value }))} 
+                  className="rounded-xl" 
+                  placeholder="Enter state name"
+                />
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Country</Label>
               <Input 

@@ -133,17 +133,43 @@ const Checkout = () => {
     } else {
       // Toggle on: Select and fill
       setSelectedAddressIdx(idx);
+      
+      // Handle potential new and old formats
+      let hNo = addr.houseNo || "";
+      let sName = addr.streetName || "";
+      
+      // Fallback for old comma-separated street field
+      if (!hNo && !sName && addr.street) {
+        const streetFull = addr.street;
+        const commaIdx = streetFull.indexOf(',');
+        if (commaIdx !== -1) {
+          hNo = streetFull.substring(0, commaIdx).trim();
+          sName = streetFull.substring(commaIdx + 1).trim();
+        } else {
+          hNo = streetFull.trim();
+          sName = streetFull.trim();
+        }
+      }
+
       setForm({
         ...form,
-        houseNo: addr.street?.split(',')[0] || addr.street || "",
-        streetName: addr.street?.split(',').slice(1).join(',').trim() || addr.street || "",
-        mandal: addr.city || "",
-        district: addr.city || "",
+        name: profile?.full_name || form.name,
+        houseNo: hNo,
+        streetName: sName,
+        mandal: addr.mandal || addr.city || "", // mandal field if exists, else city
+        district: addr.district || addr.city || "", // district field if exists, else city
         pincode: addr.zip || "",
         state: addr.state || "Andhra Pradesh",
         otherState: addr.otherState || "",
         country: addr.country || "India",
       });
+
+      if (profile?.phone) {
+        // If profile phone has prefix, try to strip it to match Input's expectation
+        const cleanPhone = profile.phone.replace(phonePrefix, "").replace(/\s+/g, "").trim();
+        setPhoneNumber(cleanPhone);
+      }
+
       setSaveAddress(false); 
       toast({ title: `Selected "${addr.label}" address` });
     }
@@ -260,6 +286,10 @@ const Checkout = () => {
         const currentAddress = {
           label: "Checkout Address",
           street: `${form.houseNo}, ${form.streetName}`,
+          houseNo: form.houseNo,
+          streetName: form.streetName,
+          mandal: form.mandal,
+          district: form.district,
           city: form.mandal,
           state: form.state,
           otherState: form.otherState,

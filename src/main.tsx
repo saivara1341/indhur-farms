@@ -7,17 +7,22 @@ import "./i18n";
 import GlobalErrorBoundary from "./components/GlobalErrorBoundary.tsx";
 
 import { HelmetProvider } from "react-helmet-async";
+import { GoogleOAuthProvider } from "@react-oauth/google";
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 try {
   const rootElement = document.getElementById("root");
   if (!rootElement) throw new Error("Failed to find the root element");
 
   createRoot(rootElement).render(
-    <HelmetProvider>
-      <GlobalErrorBoundary>
-        <App />
-      </GlobalErrorBoundary>
-    </HelmetProvider>
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+      <HelmetProvider>
+        <GlobalErrorBoundary>
+          <App />
+        </GlobalErrorBoundary>
+      </HelmetProvider>
+    </GoogleOAuthProvider>
   );
 } catch (e: any) {
   document.body.innerHTML = `

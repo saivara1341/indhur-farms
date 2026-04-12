@@ -174,7 +174,7 @@ const Products = () => {
           </h2>
           <p className="max-w-sm text-muted-foreground">
             We're working hard to bring <strong>{t(`categories.${selectedCat?.slug}`, selectedCat?.name)}</strong>{" "}
-            products to you. Stay tuned — fresh from our farm to your door!
+            products to you. Stay tuned — fresh from our farm to your home!
           </p>
           <Button variant="outline" onClick={() => setSearchParams({})}>
             Browse available products

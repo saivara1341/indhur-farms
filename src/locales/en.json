@@ -47,7 +47,7 @@
     "tagline": "🌿 INDHUR FARMS :- PURE & NATURAL TURMERIC DIRECT FROM FARMER TO YOUR HOME. 📦 HOME DELIVERY AVAILABLE",
     "title": "Fresh from Our Farm to Your Table",
     "subtitle": "Our farm products are carefully processed after harvest without any added chemicals, preservatives, or adulterants.",
-    "delivery": "Farm-to-door shipping across India & globally",
+    "delivery": "Farm-to-home shipping across India & globally",
     "shop_btn": "Shop Products",
     "story_btn": "Our Story"
   },
@@ -58,7 +58,7 @@
     },
     "delivery": {
       "title": "Worldwide Delivery",
-      "desc": "Farm-to-door shipping across India & globally"
+      "desc": "Farm-to-home shipping across India & globally"
     },
     "origin": {
       "title": "Single-Origin",
@@ -66,7 +66,7 @@
     },
     "direct": {
       "title": "No Middlemen",
-      "desc": "Direct from our farm to your door — fresher, cheaper, better"
+      "desc": "Direct from our farm to your home — fresher, cheaper, better"
     }
   },
   "featured": {
@@ -191,7 +191,7 @@
     "choose_variant": "Select Size / Quantity"
   },
   "cta": {
-    "title": "Direct from our farm to your door",
+    "title": "Direct from our farm to your home",
     "subtitle": "Our farm products are carefully processed after harvest without any added chemicals, preservatives, or adulterants.",
     "follow": "Follow on Instagram",
     "whatsapp": "Order on WhatsApp",
@@ -249,6 +249,7 @@
     "new_password": "New Password",
     "password_updated": "Password updated successfully!",
     "reset_link_sent": "Reset link sent to your email.",
+    "or_continue_with": "Or continue with",
     "back_to_login": "Back to Login"
   },
   "footer": {

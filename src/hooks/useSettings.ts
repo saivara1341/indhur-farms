@@ -13,7 +13,7 @@ export const useSettings = () => {
                 shop_name: "Indhur Farms",
                 qr_code_url: "",
                 contact_email: "support@indhurfarms.com",
-                promo_text: "Fresh from the farm to your doorstep."
+                promo_text: "Fresh from the farm to your home."
             };
         },
         staleTime: 1000 * 60 * 5, // 5 minutes
