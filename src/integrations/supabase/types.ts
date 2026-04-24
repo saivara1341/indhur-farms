@@ -139,6 +139,8 @@ export type Database = {
                     status: string
                     payment_status: string
                     payment_txn_id: string | null
+                    razorpay_order_id: string | null
+                    razorpay_payment_id: string | null
                     created_at: string
                     updated_at: string
                 }
@@ -203,6 +205,8 @@ export type Database = {
                     qr_code_url: string | null
                     created_at: string
                     updated_at: string
+                    razorpay_key_id: string | null
+                    payment_mode: string | null
                     shop_name?: string
                     contact_email?: string
                     promo_text?: string

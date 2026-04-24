@@ -1603,6 +1603,7 @@ const SettingsTab = () => {
     upi_id: "indhurfarms@upi",
     qr_code_url: "",
     phone_number: "",
+    razorpay_key_id: "",
   });
 
   useEffect(() => {
@@ -1620,6 +1621,7 @@ const SettingsTab = () => {
         upi_id: settings.upi_id || "indhurfarms@upi",
         qr_code_url: settings.qr_code_url || "",
         phone_number: (settings as any).phone_number || "",
+        razorpay_key_id: (settings as any).razorpay_key_id || "",
       });
     }
   }, [settings]);
@@ -1677,6 +1679,7 @@ const SettingsTab = () => {
         upi_id: paymentForm.upi_id,
         qr_code_url: paymentForm.qr_code_url,
         phone_number: paymentForm.phone_number,
+        razorpay_key_id: paymentForm.razorpay_key_id,
       } as any);
       if (error) throw error;
       toast({ title: t('admin.settings_config.updated') });
@@ -1801,6 +1804,11 @@ const SettingsTab = () => {
                     <div className="space-y-2">
                       <Label>{t('admin.settings_config.phone_number')}</Label>
                       <Input value={paymentForm.phone_number} onChange={e => setPaymentForm(f => ({ ...f, phone_number: e.target.value }))} placeholder="+91 12345 67890" />
+                    </div>
+                    <div className="space-y-2 p-4 bg-primary/5 rounded-xl border border-primary/20">
+                      <Label className="text-primary flex items-center gap-2"><CreditCard className="h-4 w-4" /> Razorpay Key ID</Label>
+                      <Input value={paymentForm.razorpay_key_id} onChange={e => setPaymentForm(f => ({ ...f, razorpay_key_id: e.target.value }))} placeholder="rzp_test_..." />
+                      <p className="text-[9px] text-muted-foreground uppercase">Enter your Razorpay API Key to enable automated payments.</p>
                     </div>
                   </div>
 

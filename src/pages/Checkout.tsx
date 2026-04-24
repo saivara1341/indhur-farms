@@ -26,6 +26,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useSettings } from "@/hooks/useSettings";
+
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
 
 // ── Delivery charge table ─────────────────────────────────────
 const DELIVERY_TIERS: { maxGrams: number; hyd: number; apTs: number }[] = [
@@ -112,6 +119,8 @@ const Checkout = () => {
   const [selectedAddressIdx, setSelectedAddressIdx] = useState<number | null>(null);
   const [saveAddress, setSaveAddress] = useState(true);
   const { saveProfile } = useProfile();
+  const { settings } = useSettings();
+  const [paymentMethod, setPaymentMethod] = useState<"gateway" | "manual">("gateway");
 
   const handleSelectAddress = (addr: any, idx: number) => {
     if (selectedAddressIdx === idx) {
@@ -209,9 +218,113 @@ const Checkout = () => {
     window.scrollTo({ top: 0 });
   };
 
-  const handleConfirmOrder = async () => {
+  const handleRazorpayPayment = async () => {
+    if (!settings?.razorpay_key_id) {
+      toast({ 
+        title: "Payment Gateway Not Configured", 
+        description: "Please use Manual UPI or contact support.", 
+        variant: "destructive" 
+      });
+      setPaymentMethod("manual");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // Step 1: Create Order in Razorpay via Edge Function
+      const { data: rzpOrder, error: rzpError } = await supabase.functions.invoke('create-razorpay-order', {
+        body: { 
+          amount: total,
+          receipt: `receipt_${Date.now()}`
+        }
+      });
+
+      if (rzpError || !rzpOrder) {
+        throw new Error(rzpError?.message || "Failed to initialize payment with gateway");
+      }
+
+      // Step 2: Create a PENDING order in our database first
+      // This ensures the webhook has an order to update even if the user closes the tab
+      const fullPhone = `${phonePrefix} ${phoneNumber}`;
+      const { data: orders, error: orderError } = await (supabase.from("orders") as any)
+        .insert({
+          user_id: user.id,
+          total,
+          shipping_address: `${form.name}\n${form.houseNo}, ${form.streetName}\n${form.mandal}, ${form.district}\n${form.state === "Other" ? form.otherState : form.state}, ${form.country}\nPIN: ${form.pincode}`,
+          phone: fullPhone,
+          notes: form.notes,
+          status: "pending",
+          payment_status: "pending",
+          razorpay_order_id: rzpOrder.id,
+        })
+        .select();
+
+      if (orderError || !orders || orders.length === 0) {
+        throw new Error(orderError?.message || "Failed to create internal order");
+      }
+
+      const order = orders[0];
+
+      // Insert order items
+      const orderItems = items.map(item => ({
+        order_id: order.id,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        price: Number(item.price),
+        variant_name: item.variant_name || null,
+      }));
+
+      await (supabase.from("order_items") as any).insert(orderItems);
+
+      // Step 3: Open Razorpay Checkout
+      const options = {
+        key: settings.razorpay_key_id,
+        amount: rzpOrder.amount,
+        currency: rzpOrder.currency,
+        name: settings.shop_name || "Indhur Farms",
+        description: `Order for ${form.name}`,
+        image: "/favicon.png",
+        order_id: rzpOrder.id,
+        handler: async (response: any) => {
+          console.log("Razorpay Success:", response);
+          // Payment successful! Update our order locally and redirect
+          await supabase.from("orders").update({
+            payment_status: "verified",
+            razorpay_payment_id: response.razorpay_payment_id,
+            status: "confirmed"
+          }).eq("id", order.id);
+
+          await clearCart();
+          toast({ title: t("checkout.order_placed") });
+          navigate("/order-success");
+        },
+        prefill: {
+          name: form.name,
+          contact: phoneNumber,
+          email: user?.email,
+        },
+        theme: {
+          color: "#10b981", 
+        },
+        modal: {
+          ondismiss: () => setLoading(false)
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } catch (err: any) {
+      toast({ title: "Payment Failed", description: err.message, variant: "destructive" });
+      setLoading(false);
+    }
+  };
+
+  const handleConfirmOrder = async (rzpPaymentId?: string, rzpOrderId?: string) => {
     if (!user || items.length === 0) return;
-    if (!txnId) {
+    
+    // If manual, require txnId
+    if (paymentMethod === "manual" && !txnId) {
       toast({ title: "Transaction ID Required", variant: "destructive" });
       return;
     }
@@ -232,10 +345,12 @@ const Checkout = () => {
       shipping_address: `${form.name}\n${form.houseNo}, ${form.streetName}\n${form.mandal}, ${form.district}\n${form.state === "Other" ? form.otherState : form.state}, ${form.country}\nPIN: ${form.pincode}`,
       phone: fullPhone,
       notes: form.notes,
-      status: "pending",
-      payment_txn_id: txnId,
+      status: rzpPaymentId ? "confirmed" : "pending",
+      payment_txn_id: rzpPaymentId || txnId,
       payment_screenshot_url: screenshotUrl || null,
-      payment_status: "pending",
+      payment_status: rzpPaymentId ? "verified" : "pending",
+      razorpay_payment_id: rzpPaymentId || null,
+      razorpay_order_id: rzpOrderId || null,
     };
 
     console.log("Creating order with payload:", orderPayload);
@@ -539,30 +654,163 @@ const Checkout = () => {
           </form>
         ) : (
           <div className="lg:col-span-2 space-y-8">
-            <div className="rounded-xl border bg-card p-6 shadow-card space-y-8">
-              <div className="text-center space-y-2">
-                <h3 className="font-display text-2xl font-bold">UPI Payment</h3>
-                <p className="text-muted-foreground">Pay <strong>₹{total}</strong></p>
-              </div>
-              <div className="grid grid-cols-3 gap-2 p-1 bg-muted rounded-lg">
-                {["app", "qr", "id"].map(m => (
-                  <button key={m} onClick={() => setPaymentMode(m as any)} className={`py-3 rounded-md text-xs font-bold uppercase ${paymentMode === m ? "bg-background text-primary" : "text-muted-foreground"}`}>{m}</button>
-                ))}
-              </div>
-              <div className="flex flex-col items-center justify-center min-h-[200px]">
-                {paymentMode === "app" && <a href={upiLink}><Button variant="hero" className="gap-2"><Smartphone className="h-5 w-5" /> Open UPI App</Button></a>}
-                {paymentMode === "qr" && <div className="p-4 bg-white rounded-xl border"><QRCodeCanvas value={upiLink} size={150} /></div>}
-                {paymentMode === "id" && <div className="text-center space-y-2"><div className="p-4 bg-muted rounded-lg font-mono font-bold">{upiId}</div><Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(upiId); toast({ title: "Copied" }); }}><Copy className="h-4 w-4 mr-2" /> Copy ID</Button></div>}
-              </div>
-              <div className="pt-8 border-t space-y-4">
-                <div className="space-y-3">
-                  <Label>Transaction ID *</Label>
-                  <Input placeholder="Enter Transaction ID" value={txnId} onChange={e => setTxnId(e.target.value)} />
-                  <Label>Screenshot (Optional)</Label>
-                  <Input type="file" onChange={handleScreenshotUpload} />
-                  {uploadingScreenshot && <Loader2 className="animate-spin" />}
-                  <Button variant="hero" className="w-full" onClick={handleConfirmOrder} disabled={loading || !txnId}>Confirm Payment & Place Order</Button>
+            <div className="rounded-2xl border bg-card shadow-premium overflow-hidden transition-all duration-500">
+              <div className="p-1 bg-gradient-to-r from-primary/20 via-primary/40 to-primary/20" />
+              <div className="p-8 space-y-8">
+                <div className="text-center space-y-2">
+                  <h3 className="font-display text-3xl font-bold tracking-tight">Complete Payment</h3>
+                  <p className="text-muted-foreground flex items-center justify-center gap-2">
+                    Pay <span className="text-2xl font-black text-primary">₹{total}</span> securely
+                  </p>
                 </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <button
+                    onClick={() => setPaymentMethod("gateway")}
+                    className={cn(
+                      "relative p-6 rounded-2xl border-2 transition-all duration-300 text-left group overflow-hidden",
+                      paymentMethod === "gateway" 
+                        ? "border-primary bg-primary/5 shadow-lg shadow-primary/10" 
+                        : "border-border hover:border-primary/40 bg-card"
+                    )}
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <div className={cn(
+                        "h-12 w-12 rounded-xl flex items-center justify-center transition-colors",
+                        paymentMethod === "gateway" ? "bg-primary text-white" : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"
+                      )}>
+                        <CreditCard className="h-6 w-6" />
+                      </div>
+                      {paymentMethod === "gateway" && <CheckCircle className="h-6 w-6 text-primary" />}
+                    </div>
+                    <p className="font-bold text-lg">Instant Pay</p>
+                    <p className="text-xs text-muted-foreground mt-1">UPI, Cards, Netbanking</p>
+                    <div className="mt-4 flex items-center gap-1.5">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Automated</span>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">Instant</span>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => setPaymentMethod("manual")}
+                    className={cn(
+                      "relative p-6 rounded-2xl border-2 transition-all duration-300 text-left group overflow-hidden",
+                      paymentMethod === "manual" 
+                        ? "border-primary bg-primary/5 shadow-lg shadow-primary/10" 
+                        : "border-border hover:border-primary/40 bg-card"
+                    )}
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <div className={cn(
+                        "h-12 w-12 rounded-xl flex items-center justify-center transition-colors",
+                        paymentMethod === "manual" ? "bg-primary text-white" : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"
+                      )}>
+                        <Smartphone className="h-6 w-6" />
+                      </div>
+                      {paymentMethod === "manual" && <CheckCircle className="h-6 w-6 text-primary" />}
+                    </div>
+                    <p className="font-bold text-lg">Direct UPI</p>
+                    <p className="text-xs text-muted-foreground mt-1">Transfer directly to UPI ID</p>
+                    <div className="mt-4 flex items-center gap-1.5">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">0% Fees</span>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Manual</span>
+                    </div>
+                  </button>
+                </div>
+
+                {paymentMethod === "gateway" ? (
+                  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="p-4 rounded-xl bg-muted/30 border border-border/50 text-center space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground">Click below to pay using any UPI app (PhonePe, GPay), Credit/Debit Cards, or Netbanking.</p>
+                    </div>
+                    <Button 
+                      variant="hero" 
+                      size="lg" 
+                      className="w-full h-16 text-lg font-bold shadow-xl shadow-primary/20"
+                      onClick={handleRazorpayPayment}
+                      disabled={loading}
+                    >
+                      {loading ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : <Zap className="mr-2 h-6 w-6" />}
+                      Pay ₹{total} Now
+                    </Button>
+                    <div className="flex items-center justify-center gap-6 opacity-40 grayscale">
+                      <img src="https://upload.wikimedia.org/wikipedia/commons/e/e1/UPI-Logo-vector.svg" alt="UPI" className="h-4" />
+                      <img src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" alt="Visa" className="h-3" />
+                      <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" className="h-6" />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="grid grid-cols-3 gap-2 p-1 bg-muted rounded-lg">
+                      {["app", "qr", "id"].map(m => (
+                        <button key={m} onClick={() => setPaymentMode(m as any)} className={cn(
+                          "py-3 rounded-md text-[10px] font-black uppercase tracking-widest transition-all",
+                          paymentMode === m ? "bg-white text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
+                        )}>{m}</button>
+                      ))}
+                    </div>
+                    
+                    <div className="flex flex-col items-center justify-center p-8 rounded-2xl bg-muted/20 border border-dashed border-border">
+                      {paymentMode === "app" && (
+                        <div className="text-center space-y-4">
+                          <div className="h-20 w-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+                            <Smartphone className="h-10 w-10 text-primary" />
+                          </div>
+                          <a href={upiLink}><Button variant="hero" className="gap-2 px-8">Open UPI App</Button></a>
+                        </div>
+                      )}
+                      {paymentMode === "qr" && (
+                        <div className="p-4 bg-white rounded-2xl shadow-xl ring-1 ring-border">
+                          <QRCodeCanvas value={upiLink} size={180} />
+                          <p className="text-[10px] font-bold text-center mt-3 uppercase tracking-tighter text-muted-foreground">Scan with GPay, PhonePe, Paytm</p>
+                        </div>
+                      )}
+                      {paymentMode === "id" && (
+                        <div className="text-center space-y-4 w-full">
+                          <div className="p-4 bg-white rounded-xl border border-primary/20 font-mono font-bold text-lg text-primary shadow-sm">
+                            {settings?.upi_id || upiId}
+                          </div>
+                          <Button variant="outline" className="gap-2" onClick={() => { navigator.clipboard.writeText(settings?.upi_id || upiId); toast({ title: "Copied UPI ID" }); }}>
+                            <Copy className="h-4 w-4" /> Copy ID
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-4 pt-4 border-t border-border/50">
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">1. Transaction ID *</Label>
+                          <Input placeholder="Enter 12-digit UPI Ref/UTR No." value={txnId} onChange={e => setTxnId(e.target.value)} className="h-12 border-primary/20 focus-visible:ring-primary" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">2. Proof of Payment (Optional)</Label>
+                          <div className="flex gap-2">
+                            <Input type="file" onChange={handleScreenshotUpload} className="hidden" id="screenshot-upload" />
+                            <label htmlFor="screenshot-upload" className="flex-1 flex items-center justify-center gap-2 h-12 rounded-lg border-2 border-dashed border-muted hover:border-primary/50 hover:bg-primary/5 cursor-pointer transition-all">
+                              {uploadingScreenshot ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : screenshotUrl ? <CheckCircle className="h-5 w-5 text-emerald-500" /> : <UploadCloud className="h-5 w-5 text-muted-foreground" />}
+                              <span className="text-xs font-bold text-muted-foreground">{screenshotUrl ? "Screenshot Uploaded" : "Upload Screenshot"}</span>
+                            </label>
+                          </div>
+                        </div>
+                        <Button 
+                          variant="hero" 
+                          className="w-full h-14 font-bold text-lg shadow-lg shadow-primary/10" 
+                          onClick={() => handleConfirmOrder()} 
+                          disabled={loading || !txnId}
+                        >
+                          {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Check className="mr-2 h-5 w-5" />}
+                          Confirm & Place Order
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+             </div>
               </div>
             </div>
           </div>

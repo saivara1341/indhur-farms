@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Skeleton } from "@/components/ui/skeleton";
 import founder1 from "@/assets/founder-1.jpg";
 import founder2 from "@/assets/founder-2.jpg";
 
@@ -13,6 +14,7 @@ interface FounderSlideshowProps {
 
 const FounderSlideshow = ({ className = "", interval = 5000 }: FounderSlideshowProps) => {
     const [index, setIndex] = useState(0);
+    const [imagesLoaded, setImagesLoaded] = useState<Record<string, boolean>>({});
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -20,6 +22,10 @@ const FounderSlideshow = ({ className = "", interval = 5000 }: FounderSlideshowP
         }, interval);
         return () => clearInterval(timer);
     }, [interval]);
+
+    const handleImageLoad = (src: string) => {
+        setImagesLoaded(prev => ({ ...prev, [src]: true }));
+    };
 
     return (
         <div className={`relative overflow-hidden bg-black ${className}`}>
@@ -37,13 +43,20 @@ const FounderSlideshow = ({ className = "", interval = 5000 }: FounderSlideshowP
                             className="relative h-full overflow-hidden"
                             style={{ width: `${100 / SLICE_COUNT}%` }}
                         >
+                            {!imagesLoaded[images[index]] && i === 0 && (
+                                <Skeleton className="absolute inset-0 z-0 h-full w-[800%] transform -translate-x-[12.5%]" />
+                            )}
                             <motion.img
                                 src={images[index]}
                                 className="absolute h-full object-cover"
+                                onLoad={() => handleImageLoad(images[index])}
+                                loading={index === 0 ? "eager" : "lazy"}
+                                fetchPriority={index === 0 ? "high" : "auto"}
                                 style={{
                                     width: `${SLICE_COUNT * 100}%`,
                                     left: `${-i * 100}%`,
                                     maxWidth: "none",
+                                    visibility: imagesLoaded[images[index]] ? "visible" : "hidden"
                                 }}
                                 variants={{
                                     initial: {
