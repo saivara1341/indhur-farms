@@ -809,11 +809,6 @@ const Checkout = () => {
               </div>
             </div>
           </div>
-        )
-             </div>
-              </div>
-            </div>
-          </div>
         )}
 
         <div className="rounded-xl border bg-card p-6 shadow-card h-fit sticky top-4">
