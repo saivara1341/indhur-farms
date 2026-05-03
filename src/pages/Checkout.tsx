@@ -294,16 +294,32 @@ const Checkout = () => {
         order_id: rzpOrder.id,
         handler: async (response: any) => {
           console.log("Razorpay Success:", response);
-          // Payment successful! Update our order locally and redirect
-          await supabase.from("orders").update({
-            payment_status: "verified",
-            razorpay_payment_id: response.razorpay_payment_id,
-            status: "confirmed"
-          }).eq("id", order.id);
+          
+          setLoading(true);
+          try {
+            // Step 4: Verify Payment Signature on Backend
+            const { error: verifyError } = await supabase.functions.invoke('verify-razorpay-payment', {
+              body: {
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+              }
+            });
 
-          await clearCart();
-          toast({ title: t("checkout.order_placed") });
-          navigate("/order-success");
+            if (verifyError) throw verifyError;
+
+            await clearCart();
+            toast({ title: t("checkout.order_placed") });
+            navigate("/order-success");
+          } catch (err: any) {
+            toast({ 
+              title: "Verification Failed", 
+              description: "Payment was successful but verification failed. Please contact support.", 
+              variant: "destructive" 
+            });
+          } finally {
+            setLoading(false);
+          }
         },
         prefill: {
           name: form.name,
