@@ -345,9 +345,10 @@ const Checkout = () => {
       const rzp = new (window as any).Razorpay(options);
       rzp.open();
     } catch (err: any) {
+      console.error("PAYMENT FLOW ERROR:", err);
       toast({ 
         title: "Payment Failed", 
-        description: err.message, 
+        description: err.message || "An unexpected error occurred. Check console for details.", 
         variant: "destructive" 
       });
       setLoading(false);
