@@ -224,7 +224,8 @@ const Checkout = () => {
   };
 
   const handleRazorpayPayment = async () => {
-    const keyId = settings?.razorpay_key_id || import.meta.env.VITE_RAZORPAY_KEY_ID;
+    const keyId = settings?.razorpay_key_id || import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_SkuqV0JVl34SoM";
+    console.log("RAZORPAY KEY ID:", keyId); // Debug logging
     
     if (!keyId) {
       toast({ 
