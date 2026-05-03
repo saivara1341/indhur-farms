@@ -247,11 +247,11 @@ const Checkout = () => {
       });
 
       if (rzpError || !rzpOrder) {
-        throw new Error(rzpError?.message || "Failed to initialize payment with gateway");
+        console.error("Razorpay Init Error:", rzpError);
+        throw new Error(rzpError?.message || "Step 1 Failed: Could not initialize Razorpay order. Check Edge Function logs.");
       }
 
-      // Step 2: Create a PENDING order in our database first
-      // This ensures the webhook has an order to update even if the user closes the tab
+      // Step 2: Create a PENDING order in our database
       const fullPhone = `${phonePrefix} ${phoneNumber}`;
       const { data: orders, error: orderError } = await (supabase.from("orders") as any)
         .insert({
@@ -267,7 +267,8 @@ const Checkout = () => {
         .select();
 
       if (orderError || !orders || orders.length === 0) {
-        throw new Error(orderError?.message || "Failed to create internal order");
+        console.error("Internal Order Error:", orderError);
+        throw new Error(orderError?.message || "Step 2 Failed: Could not create internal order in database.");
       }
 
       const order = orders[0];
@@ -281,7 +282,11 @@ const Checkout = () => {
         variant_name: item.variant_name || null,
       }));
 
-      await (supabase.from("order_items") as any).insert(orderItems);
+      const { error: itemsError } = await (supabase.from("order_items") as any).insert(orderItems);
+      if (itemsError) {
+        console.error("Order Items Error:", itemsError);
+        throw new Error(itemsError.message || "Step 2.5 Failed: Could not save order items.");
+      }
 
       // Step 3: Open Razorpay Checkout
       const options = {
@@ -298,7 +303,7 @@ const Checkout = () => {
           setLoading(true);
           try {
             // Step 4: Verify Payment Signature on Backend
-            const { error: verifyError } = await supabase.functions.invoke('verify-razorpay-payment', {
+            const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-razorpay-payment', {
               body: {
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
@@ -306,7 +311,10 @@ const Checkout = () => {
               }
             });
 
-            if (verifyError) throw verifyError;
+            if (verifyError || (verifyData && verifyData.error)) {
+              console.error("Verification Error:", verifyError || verifyData?.error);
+              throw new Error(verifyError?.message || verifyData?.error || "Step 4 Failed: Payment verification failed.");
+            }
 
             await clearCart();
             toast({ title: t("checkout.order_placed") });
@@ -314,7 +322,7 @@ const Checkout = () => {
           } catch (err: any) {
             toast({ 
               title: "Verification Failed", 
-              description: "Payment was successful but verification failed. Please contact support.", 
+              description: err.message || "Payment successful but verification failed. Please contact support.", 
               variant: "destructive" 
             });
           } finally {
@@ -334,10 +342,14 @@ const Checkout = () => {
         }
       };
 
-      const rzp = new window.Razorpay(options);
+      const rzp = new (window as any).Razorpay(options);
       rzp.open();
     } catch (err: any) {
-      toast({ title: "Payment Failed", description: err.message, variant: "destructive" });
+      toast({ 
+        title: "Payment Failed", 
+        description: err.message, 
+        variant: "destructive" 
+      });
       setLoading(false);
     }
   };
