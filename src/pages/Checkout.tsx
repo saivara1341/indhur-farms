@@ -12,7 +12,7 @@ import { useTranslation } from "react-i18next";
 import {
   ShoppingBag, CreditCard, Truck, CheckCircle,
   Smartphone, ArrowRight, Loader2, Copy, QrCode, Info, X, UploadCloud, ArrowLeft,
-  MapPin, Check
+  MapPin, Check, Zap
 } from "lucide-react";
 import { useProfile } from "@/hooks/useProfile";
 import { QRCodeCanvas } from "qrcode.react";
@@ -25,6 +25,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/SearchableSelect";
+import { COUNTRIES } from "@/lib/countryData";
+import { getDistrictsForState } from "@/lib/districtData";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useSettings } from "@/hooks/useSettings";
 
@@ -35,22 +38,22 @@ declare global {
 }
 
 // ── Delivery charge table ─────────────────────────────────────
-const DELIVERY_TIERS: { maxGrams: number; hyd: number; apTs: number }[] = [
-  { maxGrams: 500, hyd: 80, apTs: 120 },
-  { maxGrams: 1000, hyd: 100, apTs: 120 },
-  { maxGrams: 2000, hyd: 160, apTs: 200 },
-  { maxGrams: 3000, hyd: 200, apTs: 220 },
-  { maxGrams: 4000, hyd: 230, apTs: 250 },
-  { maxGrams: 5000, hyd: 250, apTs: 270 },
+const DELIVERY_TIERS: { maxGrams: number; hyd: number; apTs: number; bangalore: number }[] = [
+  { maxGrams: 500, hyd: 80, apTs: 120, bangalore: 190 },
+  { maxGrams: 1000, hyd: 100, apTs: 120, bangalore: 190 },
+  { maxGrams: 2000, hyd: 160, apTs: 200, bangalore: 250 }, // Extrapolated from other states, user only provided up to 1kg
+  { maxGrams: 3000, hyd: 200, apTs: 220, bangalore: 280 }, // Will ask user to confirm
+  { maxGrams: 4000, hyd: 230, apTs: 250, bangalore: 310 },
+  { maxGrams: 5000, hyd: 250, apTs: 270, bangalore: 340 },
 ];
 
 const DELIVERY_TABLE = [
-  { label: "250g / 500g", hyd: 80, apTs: 120 },
-  { label: "1 kg", hyd: 100, apTs: 120 },
-  { label: "2 kg", hyd: 160, apTs: 200 },
-  { label: "3 kg", hyd: 200, apTs: 220 },
-  { label: "4 kg", hyd: 230, apTs: 250 },
-  { label: "5 kg", hyd: 250, apTs: 270 },
+  { label: "250g / 500g", hyd: 80, apTs: 120, bangalore: 190 },
+  { label: "1 kg", hyd: 100, apTs: 120, bangalore: 190 },
+  { label: "2 kg", hyd: 160, apTs: 200, bangalore: 250 },
+  { label: "3 kg", hyd: 200, apTs: 220, bangalore: 280 },
+  { label: "4 kg", hyd: 230, apTs: 250, bangalore: 310 },
+  { label: "5 kg", hyd: 250, apTs: 270, bangalore: 340 },
 ];
 
 const parseUnitToGrams = (unit: string | null): number => {
@@ -74,18 +77,25 @@ const getDeliveryCharge = (totalGrams: number, state: string, district: string):
   
   const isAPorTS = lowerState.includes("andhra") || lowerState.includes("telangana");
   const isHyderabadLocal = ["hyderabad", "rangareddy", "vicarabad", "medchal", "malkajgiri"].some(d => lowerDistrict.includes(d));
+  const isBangalore = lowerState.includes("karnataka") && (lowerDistrict.includes("bengaluru") || lowerDistrict.includes("bangalore"));
   
   if (isAPorTS && isHyderabadLocal) {
     region = "hyderabad";
+  } else if (isBangalore) {
+    region = "bangalore";
   }
 
   for (const tier of DELIVERY_TIERS) {
     if (totalGrams <= tier.maxGrams) {
-      return region === "hyderabad" ? tier.hyd : tier.apTs;
+      if (region === "hyderabad") return tier.hyd;
+      if (region === "bangalore") return tier.bangalore;
+      return tier.apTs;
     }
   }
   const last = DELIVERY_TIERS[DELIVERY_TIERS.length - 1];
-  return region === "hyderabad" ? last.hyd : last.apTs;
+  if (region === "hyderabad") return last.hyd;
+  if (region === "bangalore") return last.bangalore;
+  return last.apTs;
 };
 
 const Checkout = () => {
@@ -112,15 +122,10 @@ const Checkout = () => {
     notes: "", 
     region: "" 
   });
-  const [paymentMode, setPaymentMode] = useState<"app" | "qr" | "id">("app");
-  const [txnId, setTxnId] = useState("");
-  const [screenshotUrl, setScreenshotUrl] = useState("");
-  const [uploadingScreenshot, setUploadingScreenshot] = useState(false);
   const [selectedAddressIdx, setSelectedAddressIdx] = useState<number | null>(null);
   const [saveAddress, setSaveAddress] = useState(true);
   const { saveProfile } = useProfile();
   const { settings } = useSettings();
-  const [paymentMethod, setPaymentMethod] = useState<"gateway" | "manual">("gateway");
 
   const handleSelectAddress = (addr: any, idx: number) => {
     if (selectedAddressIdx === idx) {
@@ -219,13 +224,14 @@ const Checkout = () => {
   };
 
   const handleRazorpayPayment = async () => {
-    if (!settings?.razorpay_key_id) {
+    const keyId = settings?.razorpay_key_id || import.meta.env.VITE_RAZORPAY_KEY_ID;
+    
+    if (!keyId) {
       toast({ 
         title: "Payment Gateway Not Configured", 
-        description: "Please use Manual UPI or contact support.", 
+        description: "Razorpay Key ID is missing. Please contact support.", 
         variant: "destructive" 
       });
-      setPaymentMethod("manual");
       return;
     }
 
@@ -279,7 +285,7 @@ const Checkout = () => {
 
       // Step 3: Open Razorpay Checkout
       const options = {
-        key: settings.razorpay_key_id,
+        key: keyId,
         amount: rzpOrder.amount,
         currency: rzpOrder.currency,
         name: settings.shop_name || "Indhur Farms",
@@ -320,153 +326,7 @@ const Checkout = () => {
     }
   };
 
-  const handleConfirmOrder = async (rzpPaymentId?: string, rzpOrderId?: string) => {
-    if (!user || items.length === 0) return;
-    
-    // If manual, require txnId
-    if (paymentMethod === "manual" && !txnId) {
-      toast({ title: "Transaction ID Required", variant: "destructive" });
-      return;
-    }
-    setLoading(true);
-    const fullPhone = `${phonePrefix} ${phoneNumber}`;
-    // Fetch fresh user to ensure session is valid and ID matches for RLS
-    const { data: { user: freshUser }, error: userError } = await supabase.auth.getUser();
-    
-    if (userError || !freshUser) {
-      toast({ title: "Session Expired", description: "Please log in again to place an order.", variant: "destructive" });
-      navigate("/auth");
-      return;
-    }
 
-    const orderPayload = {
-      user_id: freshUser.id,
-      total,
-      shipping_address: `${form.name}\n${form.houseNo}, ${form.streetName}\n${form.mandal}, ${form.district}\n${form.state === "Other" ? form.otherState : form.state}, ${form.country}\nPIN: ${form.pincode}`,
-      phone: fullPhone,
-      notes: form.notes,
-      status: rzpPaymentId ? "confirmed" : "pending",
-      payment_txn_id: rzpPaymentId || txnId,
-      payment_screenshot_url: screenshotUrl || null,
-      payment_status: rzpPaymentId ? "verified" : "pending",
-      razorpay_payment_id: rzpPaymentId || null,
-      razorpay_order_id: rzpOrderId || null,
-    };
-
-    console.log("Creating order with payload:", orderPayload);
-
-    try {
-      // Step 1: Create Order
-      const { data: orders, error: orderError } = await (supabase.from("orders") as any)
-        .insert(orderPayload)
-        .select();
-
-      if (orderError) {
-        console.error("DEBUG: Order Insert Error Details:", orderError);
-        throw new Error(`Database Error: ${orderError.message}`);
-      }
-
-      if (!orders || orders.length === 0) {
-        console.error("DEBUG: No order returned after insert. Payload was:", orderPayload);
-        throw new Error("Order was not created successfully (RLS check failed on return). Please ensure you ran the SQL fix.");
-      }
-
-      const order = orders[0];
-      console.log("Order created successfully:", order);
-
-      // Step 2: Create Order Items
-      const orderItems = items.map(item => ({
-        order_id: order.id,
-        product_id: item.product_id,
-        quantity: item.quantity,
-        price: Number(item.price),
-        variant_name: item.variant_name || null,
-      }));
-
-      console.log("Inserting order items:", orderItems);
-
-      const { error: itemsError } = await (supabase.from("order_items") as any).insert(orderItems);
-      
-      if (itemsError) {
-        console.error("DEBUG: Order Items Insert Error Details:", itemsError);
-        // If items fail, we have a dangling order. In a real system we'd use transactions 
-        // but for now we just report it clearly.
-        throw new Error(`Order created (${order.id}) but items failed: ${itemsError.message}`);
-      }
-
-      console.log("Order items inserted successfully");
-
-      // Step 3: Optional Address Save
-      if (saveAddress && user && profile) {
-        const currentAddress = {
-          label: "Checkout Address",
-          street: `${form.houseNo}, ${form.streetName}`,
-          houseNo: form.houseNo,
-          streetName: form.streetName,
-          mandal: form.mandal,
-          district: form.district,
-          city: form.mandal,
-          state: form.state,
-          otherState: form.otherState,
-          zip: form.pincode,
-          country: form.country,
-        };
-
-        const isDuplicate = profile.addresses?.some((a: any) => 
-          a.street === currentAddress.street && 
-          a.city === currentAddress.city && 
-          a.zip === currentAddress.zip
-        );
-
-        if (!isDuplicate) {
-          const newAddresses = [...(profile.addresses || []), currentAddress];
-          await saveProfile({
-            ...profile,
-            addresses: newAddresses
-          });
-        }
-      }
-
-      await clearCart();
-      toast({ title: t("checkout.order_placed", "Order placed successfully!") });
-      navigate("/order-success");
-    } catch (err: any) {
-      console.error("CRITICAL: Order placement failed:", err);
-      
-      let errorDescription = err.message || "Unknown error occurred";
-      
-      // Database Expert: Detect common schema mismatch signatures
-      if (errorDescription.toLowerCase().includes("column") || errorDescription.toLowerCase().includes("schema cache")) {
-        errorDescription = "Database schema mismatch detected. Please run the 'Database Schema Auditor' script in your Supabase SQL Editor to fix missing columns (like payment_screenshot_url).";
-      }
-
-      toast({ 
-        title: t("checkout.order_failed"), 
-        description: errorDescription, 
-        variant: "destructive" 
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleScreenshotUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploadingScreenshot(true);
-    const fileName = `receipt-${Date.now()}.${file.name.split('.').pop()}`;
-    try {
-      const { error } = await supabase.storage.from('product-images').upload(`payments/${fileName}`, file);
-      if (error) throw error;
-      const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(`payments/${fileName}`);
-      setScreenshotUrl(publicUrl);
-      toast({ title: "✅ Screenshot Uploaded" });
-    } catch (err: any) {
-      toast({ title: "Upload Failed", description: err.message, variant: "destructive" });
-    } finally {
-      setUploadingScreenshot(false);
-    }
-  };
 
   if (!user) { navigate("/auth"); return null; }
   if (items.length === 0) { navigate("/cart"); return null; }
@@ -550,7 +410,14 @@ const Checkout = () => {
                 <div>
                   <Label htmlFor="phone">Phone Number *</Label>
                   <div className="flex gap-2">
-                    <Input value={phonePrefix} onChange={e => setPhonePrefix(e.target.value)} className="w-16" />
+                    <SearchableSelect
+                      options={COUNTRIES.map(c => ({ label: `${c.code} ${c.dialCode}`, value: c.dialCode }))}
+                      value={phonePrefix}
+                      onChange={setPhonePrefix}
+                      className="w-[100px] px-2"
+                      placeholder="Code"
+                      searchPlaceholder="Code..."
+                    />
                     <Input id="phone" required value={phoneNumber} onChange={e => setPhoneNumber(e.target.value.replace(/\D/g, ""))} className="flex-1" />
                   </div>
                 </div>
@@ -572,13 +439,23 @@ const Checkout = () => {
                 </div>
                 <div>
                   <Label htmlFor="district">District *</Label>
-                  <Input id="district" required value={form.district} onChange={e => {
-                    const v = e.target.value;
-                    setForm(f => ({ 
-                      ...f, 
-                      district: v
-                    }));
-                  }} />
+                  {getDistrictsForState(form.state).length > 0 ? (
+                    <SearchableSelect
+                      options={getDistrictsForState(form.state).map(d => ({ label: d, value: d }))}
+                      value={form.district}
+                      onChange={(val) => setForm(f => ({ ...f, district: val }))}
+                      placeholder="Select district"
+                      searchPlaceholder="Search district..."
+                    />
+                  ) : (
+                    <Input id="district" required value={form.district} onChange={e => {
+                      const v = e.target.value;
+                      setForm(f => ({ 
+                        ...f, 
+                        district: v
+                      }));
+                    }} placeholder="Enter District Name" />
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="pincode">Pincode *</Label>
@@ -588,23 +465,18 @@ const Checkout = () => {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="state">State *</Label>
-                  <Select 
-                    value={form.state} 
-                    onValueChange={(val) => setForm(f => ({ 
+                  <SearchableSelect
+                    options={INDIA_STATES.map(s => ({ label: s, value: s }))}
+                    value={form.state}
+                    onChange={(val) => setForm(f => ({ 
                       ...f, 
                       state: val, 
+                      district: "", // Reset district when state changes
                       country: val === "Other" ? f.country : "India" 
                     }))}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select state" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-[280px]">
-                      {INDIA_STATES.map(s => (
-                        <SelectItem key={s} value={s}>{s}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    placeholder="Select state"
+                    searchPlaceholder="Search state..."
+                  />
                   {form.state === "Other" && (
                     <Input 
                       placeholder="Enter State Name" 
@@ -616,7 +488,13 @@ const Checkout = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="country">Country</Label>
-                  <Input id="country" value={form.country} onChange={e => setForm(f => ({ ...f, country: e.target.value }))} />
+                  <SearchableSelect
+                    options={COUNTRIES.map(c => ({ label: c.name, value: c.name }))}
+                    value={form.country}
+                    onChange={(val) => setForm(f => ({ ...f, country: val }))}
+                    placeholder="Select country"
+                    searchPlaceholder="Search country..."
+                  />
                 </div>
               </div>
               
@@ -664,148 +542,26 @@ const Checkout = () => {
                   </p>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <button
-                    onClick={() => setPaymentMethod("gateway")}
-                    className={cn(
-                      "relative p-6 rounded-2xl border-2 transition-all duration-300 text-left group overflow-hidden",
-                      paymentMethod === "gateway" 
-                        ? "border-primary bg-primary/5 shadow-lg shadow-primary/10" 
-                        : "border-border hover:border-primary/40 bg-card"
-                    )}
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <div className="p-4 rounded-xl bg-muted/30 border border-border/50 text-center space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground">Click below to pay securely using UPI, Credit/Debit Cards, or Netbanking via Razorpay.</p>
+                  </div>
+                  <Button 
+                    variant="hero" 
+                    size="lg" 
+                    className="w-full h-16 text-lg font-bold shadow-xl shadow-primary/20"
+                    onClick={handleRazorpayPayment}
+                    disabled={loading}
                   >
-                    <div className="flex items-center justify-between mb-4">
-                      <div className={cn(
-                        "h-12 w-12 rounded-xl flex items-center justify-center transition-colors",
-                        paymentMethod === "gateway" ? "bg-primary text-white" : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"
-                      )}>
-                        <CreditCard className="h-6 w-6" />
-                      </div>
-                      {paymentMethod === "gateway" && <CheckCircle className="h-6 w-6 text-primary" />}
-                    </div>
-                    <p className="font-bold text-lg">Instant Pay</p>
-                    <p className="text-xs text-muted-foreground mt-1">UPI, Cards, Netbanking</p>
-                    <div className="mt-4 flex items-center gap-1.5">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Automated</span>
-                      <span className="text-[10px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">Instant</span>
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() => setPaymentMethod("manual")}
-                    className={cn(
-                      "relative p-6 rounded-2xl border-2 transition-all duration-300 text-left group overflow-hidden",
-                      paymentMethod === "manual" 
-                        ? "border-primary bg-primary/5 shadow-lg shadow-primary/10" 
-                        : "border-border hover:border-primary/40 bg-card"
-                    )}
-                  >
-                    <div className="flex items-center justify-between mb-4">
-                      <div className={cn(
-                        "h-12 w-12 rounded-xl flex items-center justify-center transition-colors",
-                        paymentMethod === "manual" ? "bg-primary text-white" : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"
-                      )}>
-                        <Smartphone className="h-6 w-6" />
-                      </div>
-                      {paymentMethod === "manual" && <CheckCircle className="h-6 w-6 text-primary" />}
-                    </div>
-                    <p className="font-bold text-lg">Direct UPI</p>
-                    <p className="text-xs text-muted-foreground mt-1">Transfer directly to UPI ID</p>
-                    <div className="mt-4 flex items-center gap-1.5">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">0% Fees</span>
-                      <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Manual</span>
-                    </div>
-                  </button>
+                    {loading ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : <Zap className="mr-2 h-6 w-6" />}
+                    Pay ₹{total} Now
+                  </Button>
+                  <div className="flex items-center justify-center gap-6 opacity-40 grayscale">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/e/e1/UPI-Logo-vector.svg" alt="UPI" className="h-4" />
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" alt="Visa" className="h-3" />
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" className="h-6" />
+                  </div>
                 </div>
-
-                {paymentMethod === "gateway" ? (
-                  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <div className="p-4 rounded-xl bg-muted/30 border border-border/50 text-center space-y-2">
-                      <p className="text-xs font-medium text-muted-foreground">Click below to pay using any UPI app (PhonePe, GPay), Credit/Debit Cards, or Netbanking.</p>
-                    </div>
-                    <Button 
-                      variant="hero" 
-                      size="lg" 
-                      className="w-full h-16 text-lg font-bold shadow-xl shadow-primary/20"
-                      onClick={handleRazorpayPayment}
-                      disabled={loading}
-                    >
-                      {loading ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : <Zap className="mr-2 h-6 w-6" />}
-                      Pay ₹{total} Now
-                    </Button>
-                    <div className="flex items-center justify-center gap-6 opacity-40 grayscale">
-                      <img src="https://upload.wikimedia.org/wikipedia/commons/e/e1/UPI-Logo-vector.svg" alt="UPI" className="h-4" />
-                      <img src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" alt="Visa" className="h-3" />
-                      <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" className="h-6" />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <div className="grid grid-cols-3 gap-2 p-1 bg-muted rounded-lg">
-                      {["app", "qr", "id"].map(m => (
-                        <button key={m} onClick={() => setPaymentMode(m as any)} className={cn(
-                          "py-3 rounded-md text-[10px] font-black uppercase tracking-widest transition-all",
-                          paymentMode === m ? "bg-white text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
-                        )}>{m}</button>
-                      ))}
-                    </div>
-                    
-                    <div className="flex flex-col items-center justify-center p-8 rounded-2xl bg-muted/20 border border-dashed border-border">
-                      {paymentMode === "app" && (
-                        <div className="text-center space-y-4">
-                          <div className="h-20 w-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
-                            <Smartphone className="h-10 w-10 text-primary" />
-                          </div>
-                          <a href={upiLink}><Button variant="hero" className="gap-2 px-8">Open UPI App</Button></a>
-                        </div>
-                      )}
-                      {paymentMode === "qr" && (
-                        <div className="p-4 bg-white rounded-2xl shadow-xl ring-1 ring-border">
-                          <QRCodeCanvas value={upiLink} size={180} />
-                          <p className="text-[10px] font-bold text-center mt-3 uppercase tracking-tighter text-muted-foreground">Scan with GPay, PhonePe, Paytm</p>
-                        </div>
-                      )}
-                      {paymentMode === "id" && (
-                        <div className="text-center space-y-4 w-full">
-                          <div className="p-4 bg-white rounded-xl border border-primary/20 font-mono font-bold text-lg text-primary shadow-sm">
-                            {settings?.upi_id || upiId}
-                          </div>
-                          <Button variant="outline" className="gap-2" onClick={() => { navigator.clipboard.writeText(settings?.upi_id || upiId); toast({ title: "Copied UPI ID" }); }}>
-                            <Copy className="h-4 w-4" /> Copy ID
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="space-y-4 pt-4 border-t border-border/50">
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">1. Transaction ID *</Label>
-                          <Input placeholder="Enter 12-digit UPI Ref/UTR No." value={txnId} onChange={e => setTxnId(e.target.value)} className="h-12 border-primary/20 focus-visible:ring-primary" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">2. Proof of Payment (Optional)</Label>
-                          <div className="flex gap-2">
-                            <Input type="file" onChange={handleScreenshotUpload} className="hidden" id="screenshot-upload" />
-                            <label htmlFor="screenshot-upload" className="flex-1 flex items-center justify-center gap-2 h-12 rounded-lg border-2 border-dashed border-muted hover:border-primary/50 hover:bg-primary/5 cursor-pointer transition-all">
-                              {uploadingScreenshot ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : screenshotUrl ? <CheckCircle className="h-5 w-5 text-emerald-500" /> : <UploadCloud className="h-5 w-5 text-muted-foreground" />}
-                              <span className="text-xs font-bold text-muted-foreground">{screenshotUrl ? "Screenshot Uploaded" : "Upload Screenshot"}</span>
-                            </label>
-                          </div>
-                        </div>
-                        <Button 
-                          variant="hero" 
-                          className="w-full h-14 font-bold text-lg shadow-lg shadow-primary/10" 
-                          onClick={() => handleConfirmOrder()} 
-                          disabled={loading || !txnId}
-                        >
-                          {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Check className="mr-2 h-5 w-5" />}
-                          Confirm & Place Order
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           </div>

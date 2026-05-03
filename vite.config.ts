@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => ({
   base: "/indhur-farms/", // Required for GitHub Pages deployment
   server: {
     host: "::",
-    port: 8082,
+    port: 8084,
     allowedHosts: true,
     hmr: {
       overlay: false,

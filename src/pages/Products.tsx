@@ -200,7 +200,7 @@ const Products = () => {
 
       {/* ── Product grid ── */}
       {!isSelectedComingSoon && !isLoading && products.length > 0 && (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:gap-6">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:gap-6 items-start">
           {(products as any[]).map((product) => (
             <ProductCard
               key={product.id}

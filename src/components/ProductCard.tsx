@@ -38,6 +38,8 @@ const ProductCard = ({ product, showAllVariants = false }: ProductCardProps) => 
   const [localQty, setLocalQty] = useState(1);
   const [selectedVariantId, setSelectedVariantId] = useState<string>(sortedVariants[0]?.id || "");
 
+  const [isExpanded, setIsExpanded] = useState(false);
+
   const selectedVariant = sortedVariants.find(v => v.id === selectedVariantId) || {
     id: product.id,
     name: product.name,
@@ -56,7 +58,7 @@ const ProductCard = ({ product, showAllVariants = false }: ProductCardProps) => 
   const displayImage = product.image_url || getSmartFallback(product.name, product.slug);
 
   return (
-    <div className="group relative overflow-hidden rounded-2xl border border-primary/5 bg-card shadow-premium transition-all duration-500 hover-lift active:scale-[0.98] flex flex-col">
+    <div className="group relative h-full overflow-hidden rounded-2xl border border-primary/5 bg-card shadow-premium transition-all duration-500 hover-lift active:scale-[0.98] flex flex-col">
       <Link to={`/product/${product.slug}`}>
         <div className="aspect-[4/5] overflow-hidden bg-muted/30">
           <img
@@ -88,23 +90,55 @@ const ProductCard = ({ product, showAllVariants = false }: ProductCardProps) => 
             </span>
             {sortedVariants.length > 0 ? (
               showAllVariants ? (
-                /* Landing Page Mode: Show all buttons */
+                /* Landing Page Mode: Show all buttons or limit to 2 */
                 <div className="grid grid-cols-2 gap-2" onClick={(e) => e.preventDefault()}>
-                  {sortedVariants.map((v) => (
-                    <button
-                      key={v.id}
-                      onClick={() => setSelectedVariantId(v.id)}
-                      className={cn(
-                        "flex flex-col items-center justify-center rounded-xl p-2 transition-all border-2",
-                        selectedVariantId === v.id 
-                          ? "border-primary bg-primary/10 shadow-sm" 
-                          : "border-transparent bg-muted/50 hover:bg-muted text-muted-foreground"
+                  {(!isExpanded && sortedVariants.length > 2) ? (
+                    <>
+                      {/* Slot 1: Currently selected variant */}
+                      <button
+                        className="flex flex-col items-center justify-center rounded-xl p-2 transition-all border-2 border-primary bg-primary/10 shadow-sm"
+                      >
+                        <span className="text-[10px] font-black text-primary">{selectedVariant.unit}</span>
+                        <span className="text-[9px] font-bold opacity-70 text-primary">₹{selectedVariant.price}</span>
+                      </button>
+                      {/* Slot 2: +X More button */}
+                      <button
+                        onClick={() => setIsExpanded(true)}
+                        className="flex flex-col items-center justify-center rounded-xl p-2 transition-all border-2 border-dashed border-primary/30 bg-muted/20 hover:bg-muted text-muted-foreground"
+                      >
+                        <span className="text-[10px] font-black">+{sortedVariants.length - 1} {t('common.more', 'More')}</span>
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      {sortedVariants.map((v) => (
+                        <button
+                          key={v.id}
+                          onClick={() => {
+                            setSelectedVariantId(v.id);
+                            setIsExpanded(false); // auto-collapse on selection
+                          }}
+                          className={cn(
+                            "flex flex-col items-center justify-center rounded-xl p-2 transition-all border-2",
+                            selectedVariantId === v.id 
+                              ? "border-primary bg-primary/10 shadow-sm" 
+                              : "border-transparent bg-muted/50 hover:bg-muted text-muted-foreground"
+                          )}
+                        >
+                          <span className={cn("text-[10px] font-black", selectedVariantId === v.id ? "text-primary" : "")}>{v.unit}</span>
+                          <span className={cn("text-[9px] font-bold opacity-70", selectedVariantId === v.id ? "text-primary" : "")}>₹{v.price}</span>
+                        </button>
+                      ))}
+                      {isExpanded && sortedVariants.length > 2 && (
+                        <button
+                          onClick={() => setIsExpanded(false)}
+                          className="flex flex-col items-center justify-center rounded-xl p-2 transition-all border-2 border-transparent bg-muted/20 hover:bg-muted text-muted-foreground col-span-2 mt-1"
+                        >
+                          <span className="text-[10px] font-bold">{t('common.show_less', 'Show Less')}</span>
+                        </button>
                       )}
-                    >
-                      <span className={cn("text-[10px] font-black", selectedVariantId === v.id ? "text-primary" : "")}>{v.unit}</span>
-                      <span className={cn("text-[9px] font-bold opacity-70", selectedVariantId === v.id ? "text-primary" : "")}>₹{v.price}</span>
-                    </button>
-                  ))}
+                    </>
+                  )}
                 </div>
               ) : (
                 /* Regular Mode: Dropdown */
